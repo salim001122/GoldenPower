@@ -3,16 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>GOLDENPOWER · Premium Wealth Platform</title>
+  <title>GOLDENPOWER · AI Copy Trading</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -199,17 +196,30 @@
     .btn-loading .btn-text { display: none; }
     .btn-loading .btn-spinner { display: inline-block; }
     .btn-spinner { display: none; }
+    
+    @keyframes tickerMove {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .ticker-wrap {
+      overflow: hidden; white-space: nowrap;
+    }
+    .ticker {
+      display: inline-block; animation: tickerMove 20s linear infinite;
+    }
+    .ai-glow {
+      box-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
   </style>
 </head>
 <body class="bg-[#0a0a0a] text-white min-h-screen flex justify-center">
 
-  <!-- Splash Screen -->
   <div id="splash-screen">
     <div class="splash-logo">👑</div>
     <h1 class="text-3xl font-serif font-black mt-6 tracking-wider">GOLDEN<span class="text-gradient-gold">POWER</span></h1>
-    <p class="text-gray-500 text-xs tracking-widest mt-2">Premium Wealth Platform</p>
+    <p class="text-gray-500 text-xs tracking-widest mt-2">AI Copy Trading Ecosystem</p>
     <div class="splash-loader"><div class="splash-loader-bar"></div></div>
-    <p class="text-gray-600 text-xs mt-3" id="splash-status">Loading assets...</p>
+    <p class="text-gray-600 text-xs mt-3" id="splash-status">Initializing AI Core...</p>
   </div>
 
   <div id="app" class="w-full max-w-md bg-[#0a0a0a] min-h-screen relative shadow-2xl border-x border-white/5 flex flex-col">
@@ -222,12 +232,10 @@
     </nav>
   </div>
 
-  <!-- Global Modal -->
   <div class="modal-overlay" id="global-modal">
     <div class="modal-content hide-scrollbar" id="global-modal-content"></div>
   </div>
 
-  <!-- Spin Result Popup -->
   <div class="spin-result-popup" id="spin-result-popup">
     <p class="text-5xl mb-3" id="result-emoji">🎉</p>
     <h2 class="text-2xl font-bold text-gold-400 mb-2" id="result-title">Congratulations!</h2>
@@ -235,11 +243,9 @@
     <button onclick="document.getElementById('spin-result-popup').classList.remove('show')" class="mt-5 bg-gradient-gold text-black px-8 py-3 rounded-xl font-bold text-lg">🎉 Awesome!</button>
   </div>
 
-  <!-- Confetti Container -->
   <div id="confetti-container" class="fixed inset-0 pointer-events-none z-[150]"></div>
 
   <script>
-    // ============ FIREBASE CONFIGURATION ============
     const firebaseConfig = {
       apiKey: "AIzaSyDkGE9Y-a14ysQvBGcZPSQ6JTgpQCbHddg",
       authDomain: "goldenpower.firebaseapp.com",
@@ -253,20 +259,14 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    db.enablePersistence().catch((err) => console.error('Firestore persistence error:', err.code));
 
-    db.enablePersistence().catch((err) => {
-      console.error('Firestore persistence error:', err.code);
-    });
-
-    // ============ UTILITIES ============
     function showToast(msg, type = 'info') {
       const container = document.getElementById('toast-container');
       if (!container) return;
       const colors = {
-        success: 'bg-green-500/90 border-green-400',
-        error: 'bg-red-500/90 border-red-400',
-        info: 'bg-blue-500/90 border-blue-400',
-        reward: 'bg-gradient-gold border-gold-400 text-black font-bold'
+        success: 'bg-green-500/90 border-green-400', error: 'bg-red-500/90 border-red-400',
+        info: 'bg-blue-500/90 border-blue-400', reward: 'bg-gradient-gold border-gold-400 text-black font-bold'
       };
       const icons = { success: '✓', error: '✕', info: 'ℹ', reward: '★' };
       const toast = document.createElement('div');
@@ -307,17 +307,13 @@
     function setButtonLoading(btn, loading = true) {
       if (!btn) return;
       if (loading) {
-        btn.classList.add('btn-loading');
-        btn.disabled = true;
-        const spinner = btn.querySelector('.btn-spinner');
-        const text = btn.querySelector('.btn-text');
+        btn.classList.add('btn-loading'); btn.disabled = true;
+        const spinner = btn.querySelector('.btn-spinner'), text = btn.querySelector('.btn-text');
         if (spinner) spinner.style.display = 'inline-block';
         if (text) text.style.display = 'none';
       } else {
-        btn.classList.remove('btn-loading');
-        btn.disabled = false;
-        const spinner = btn.querySelector('.btn-spinner');
-        const text = btn.querySelector('.btn-text');
+        btn.classList.remove('btn-loading'); btn.disabled = false;
+        const spinner = btn.querySelector('.btn-spinner'), text = btn.querySelector('.btn-text');
         if (spinner) spinner.style.display = 'none';
         if (text) text.style.display = 'inline';
       }
@@ -327,7 +323,6 @@
       return `<span class="btn-spinner loading-spinner mr-2"></span><span class="btn-text">${text}</span>`;
     }
 
-    // ============ REFERRAL TASKS CONFIG ============
     const REFERRAL_TASKS = [
       { required: 2, reward: 8, label: '2 Active Deposits', icon: '🥉' },
       { required: 5, reward: 20, label: '5 Active Deposits', icon: '🥈' },
@@ -337,24 +332,18 @@
       { required: 100, reward: 1000, label: '100 Active Deposits', icon: '🏆' }
     ];
 
-    // ============ APP STATE ============
     const APP = {
-      user: null,
-      currentUserData: null,
-      currentPage: 'login',
-      _spinning: false,
+      user: null, currentUserData: null, currentPage: 'login', _spinning: false,
       _depositAddress: 'TXRsYoutdJBu6jmWjgAT29tpgtVuTwr8en',
-      _depositBonusRemaining: 0,
-      _initialized: false,
+      _depositBonusRemaining: 0, _initialized: false,
       
       async init() {
-        console.log('🚀 App initializing...');
+        console.log('🚀 AI Copy Trading Core initializing...');
         await this.setupSplash();
         this.setupAuthListener();
         this.startLiveFeed();
         await this.loadDepositBonusCount();
         this._initialized = true;
-        console.log('✅ App initialized');
         this.route();
       },
       
@@ -362,902 +351,328 @@
         const splash = document.getElementById('splash-screen');
         const status = document.getElementById('splash-status');
         if (!splash) return;
-        
-        const steps = ['Loading assets...', 'Connecting to Firebase...', 'Verifying security...', 'Ready!'];
+        const steps = ['Loading AI modules...', 'Connecting to Firebase...', 'Verifying security...', 'AI Copy Trading Ready!'];
         let i = 0;
-        const interval = setInterval(() => {
-          if (status && i < steps.length) status.textContent = steps[i];
-          i++;
-          if (i >= steps.length) clearInterval(interval);
-        }, 500);
-        
+        const interval = setInterval(() => { if (status && i < steps.length) status.textContent = steps[i]; i++; if (i >= steps.length) clearInterval(interval); }, 600);
         return new Promise(resolve => {
-          setTimeout(() => {
-            splash.classList.add('hide');
-            setTimeout(() => {
-              if (splash) splash.style.display = 'none';
-              resolve();
-            }, 600);
-          }, 2200);
+          setTimeout(() => { splash.classList.add('hide'); setTimeout(() => { if (splash) splash.style.display = 'none'; resolve(); }, 600); }, 2400);
         });
       },
       
       setupAuthListener() {
         auth.onAuthStateChanged(async (firebaseUser) => {
-          console.log('🔄 Auth state changed:', firebaseUser ? 'User logged in' : 'No user');
-          
           if (firebaseUser) {
             this.user = firebaseUser;
             await this.loadUserData(firebaseUser.uid);
-            if (!this.currentUserData) {
-              console.log('📝 Creating new user profile...');
-              await this.createUserProfile(firebaseUser);
-            }
+            if (!this.currentUserData) await this.createUserProfile(firebaseUser);
           } else {
-            this.user = null;
-            this.currentUserData = null;
-            console.log('👋 User signed out');
+            this.user = null; this.currentUserData = null;
           }
-          
-          if (this._initialized) {
-            this.route();
-          }
+          if (this._initialized) this.route();
         });
       },
       
       async loadUserData(uid) {
         try {
           const doc = await db.collection('users').doc(uid).get();
-          if (doc.exists) {
-            this.currentUserData = doc.data();
-            this.currentUserData.id = uid;
-            this.ensureDefaults();
-          } else {
-            this.currentUserData = null;
-          }
-        } catch (error) {
-          console.error('Error loading user data:', error);
-          this.currentUserData = null;
-        }
+          if (doc.exists) { this.currentUserData = doc.data(); this.currentUserData.id = uid; this.ensureDefaults(); }
+          else this.currentUserData = null;
+        } catch (error) { console.error('Error loading user data:', error); this.currentUserData = null; }
       },
       
       async createUserProfile(firebaseUser) {
         const refCode = this.getRefFromURL();
         const deviceId = this.getDeviceFingerprint();
-        
-        const existingDevice = await db.collection('users')
-          .where('deviceId', '==', deviceId)
-          .limit(1)
-          .get();
-        
-        if (!existingDevice.empty) {
-          showToast('❌ This device is already registered!', 'error');
-          await auth.signOut();
-          return;
-        }
-        
+        const existingDevice = await db.collection('users').where('deviceId', '==', deviceId).limit(1).get();
+        if (!existingDevice.empty) { showToast('❌ This device is already registered!', 'error'); await auth.signOut(); return; }
         const newUser = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          password: '', // Will be set during registration
-          emailVerified: true,
+          id: firebaseUser.uid, email: firebaseUser.email || '', password: '', emailVerified: true,
           username: firebaseUser.email ? sanitizeInput(firebaseUser.email.split('@')[0]) : 'User',
-          deviceId: deviceId,
-          avatarUrl: this.generateAvatar(),
-          balance: { usdt: 0, trx: 0 },
-          vipLevel: 0,
-          referralCode: 'GOLD' + Math.random().toString(36).substr(2, 5).toUpperCase(),
-          referredBy: refCode || null,
-          walletAddress: null,
-          walletAddressSetAt: null,
-          joinDate: new Date().toISOString(),
-          plans: [],
-          referrals: { 
-            l1Count: 0, l2Count: 0, validCount: 0, totalEarnings: 0, 
-            members: [], pendingBonus: 0 
-          },
-          referralTasksCompleted: [], // Track completed tasks
-          referralTasksClaimed: [], // Track claimed tasks
-          transactions: [],
-          notifications: [{
-            id: 'welcome',
-            title: '🎉 Welcome!',
-            message: 'Account created! Make your first deposit to start earning!',
-            date: new Date().toISOString(),
-            read: false,
-            type: 'reward'
-          }],
-          spinAvailable: 0,
-          lastCheckIn: null,
-          _checkinDate: null,
-          securityPin: '123456',
-          twoFactorEnabled: false,
-          twoFactorSecret: null,
-          totalDeposited: 0,
-          totalWithdrawn: 0,
-          totalEarned: 0,
-          miningPower: 0,
-          lastMiningClaim: null,
-          depositBonusClaimed: false,
-          hasMadeFirstDeposit: false,
-          firstDepositApproved: false
+          deviceId: deviceId, avatarUrl: this.generateAvatar(), balance: { usdt: 0, trx: 0 }, vipLevel: 0,
+          referralCode: 'GOLD' + Math.random().toString(36).substr(2, 5).toUpperCase(), referredBy: refCode || null,
+          walletAddress: null, walletAddressSetAt: null, joinDate: new Date().toISOString(), plans: [],
+          referrals: { l1Count: 0, l2Count: 0, validCount: 0, totalEarnings: 0, members: [], pendingBonus: 0 },
+          referralTasksCompleted: [], referralTasksClaimed: [], transactions: [],
+          notifications: [{ id: 'welcome', title: '🎉 Welcome!', message: 'Account created! Make your first deposit to start earning!', date: new Date().toISOString(), read: false, type: 'reward' }],
+          spinAvailable: 0, lastCheckIn: null, _checkinDate: null, securityPin: '123456', twoFactorEnabled: false, twoFactorSecret: null,
+          totalDeposited: 0, totalWithdrawn: 0, totalEarned: 0, miningPower: 0, lastMiningClaim: null,
+          depositBonusClaimed: false, hasMadeFirstDeposit: false, firstDepositApproved: false,
+          copyTradeCount: 0, copyTradeResetDate: null
         };
-
         try {
           await db.collection('users').doc(firebaseUser.uid).set(newUser);
           this.currentUserData = newUser;
-          
-          if (refCode) {
-            await this.processReferral(refCode, firebaseUser.uid);
-          }
-          
+          if (refCode) await this.processReferral(refCode, firebaseUser.uid);
           showToast('🎉 Account created! Make a deposit to unlock bonuses.', 'success');
           spawnConfetti(20);
-        } catch (error) {
-          console.error('❌ Error creating user profile:', error);
-          showToast('Error creating account. Please try again.', 'error');
-        }
+        } catch (error) { console.error('❌ Error creating user profile:', error); showToast('Error creating account. Please try again.', 'error'); }
       },
       
       ensureDefaults() {
-        const u = this.currentUserData;
-        if (!u) return;
-        u.balance = u.balance || { usdt: 0, trx: 0 };
-        u.plans = u.plans || [];
-        u.transactions = u.transactions || [];
-        u.notifications = u.notifications || [];
-        u.referrals = u.referrals || { l1Count: 0, l2Count: 0, validCount: 0, totalEarnings: 0, members: [], pendingBonus: 0 };
-        u.referralTasksCompleted = u.referralTasksCompleted || [];
-        u.referralTasksClaimed = u.referralTasksClaimed || [];
-        u.spinAvailable = u.spinAvailable || 0;
-        u.lastCheckIn = u.lastCheckIn || null;
-        u._checkinDate = u._checkinDate || null;
-        u.securityPin = u.securityPin || '123456';
-        u.twoFactorEnabled = u.twoFactorEnabled || false;
-        u.twoFactorSecret = u.twoFactorSecret || null;
+        const u = this.currentUserData; if (!u) return;
+        u.balance = u.balance || { usdt: 0, trx: 0 }; u.plans = u.plans || []; u.transactions = u.transactions || [];
+        u.notifications = u.notifications || []; u.referrals = u.referrals || { l1Count: 0, l2Count: 0, validCount: 0, totalEarnings: 0, members: [], pendingBonus: 0 };
+        u.referralTasksCompleted = u.referralTasksCompleted || []; u.referralTasksClaimed = u.referralTasksClaimed || [];
+        u.spinAvailable = u.spinAvailable || 0; u.lastCheckIn = u.lastCheckIn || null; u._checkinDate = u._checkinDate || null;
+        u.securityPin = u.securityPin || '123456'; u.twoFactorEnabled = u.twoFactorEnabled || false; u.twoFactorSecret = u.twoFactorSecret || null;
         u.username = u.username || (u.email ? sanitizeInput(u.email.split('@')[0]) : 'User');
-        u.vipLevel = u.vipLevel || 0;
-        u.totalDeposited = u.totalDeposited || 0;
-        u.totalWithdrawn = u.totalWithdrawn || 0;
-        u.totalEarned = u.totalEarned || 0;
-        u.miningPower = u.miningPower || 0;
-        u.lastMiningClaim = u.lastMiningClaim || null;
-        u.avatarUrl = u.avatarUrl || this.generateAvatar();
-        u.referralCode = u.referralCode || ('GOLD' + Math.random().toString(36).substr(2, 5).toUpperCase());
-        u.walletAddress = u.walletAddress || null;
-        u.walletAddressSetAt = u.walletAddressSetAt || null;
-        u.depositBonusClaimed = u.depositBonusClaimed || false;
-        u.hasMadeFirstDeposit = u.hasMadeFirstDeposit || false;
-        u.firstDepositApproved = u.firstDepositApproved || false;
-        u.deviceId = u.deviceId || null;
+        u.vipLevel = u.vipLevel || 0; u.totalDeposited = u.totalDeposited || 0; u.totalWithdrawn = u.totalWithdrawn || 0;
+        u.totalEarned = u.totalEarned || 0; u.miningPower = u.miningPower || 0; u.lastMiningClaim = u.lastMiningClaim || null;
+        u.avatarUrl = u.avatarUrl || this.generateAvatar(); u.referralCode = u.referralCode || ('GOLD' + Math.random().toString(36).substr(2, 5).toUpperCase());
+        u.walletAddress = u.walletAddress || null; u.walletAddressSetAt = u.walletAddressSetAt || null;
+        u.depositBonusClaimed = u.depositBonusClaimed || false; u.hasMadeFirstDeposit = u.hasMadeFirstDeposit || false;
+        u.firstDepositApproved = u.firstDepositApproved || false; u.deviceId = u.deviceId || null;
+        u.copyTradeCount = u.copyTradeCount || 0; u.copyTradeResetDate = u.copyTradeResetDate || null;
       },
       
       async saveUserData() {
         if (!this.currentUserData || !this.currentUserData.id) return;
-        try {
-          const userRef = db.collection('users').doc(this.currentUserData.id);
-          await userRef.update(this.currentUserData);
-        } catch (error) {
-          console.error('Error saving user data:', error);
-        }
+        try { await db.collection('users').doc(this.currentUserData.id).update(this.currentUserData); } catch (error) { console.error('Error saving user data:', error); }
       },
       
-      generateAvatar() {
-        const seeds = ['Felix','Mia','Leo','Zoe','Max','Ava','Sam','Kim','Ben','Lia','Jay','Amy'];
-        return 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + seeds[Math.floor(Math.random()*seeds.length)] + Math.floor(Math.random()*1000);
-      },
+      generateAvatar() { const seeds = ['Felix','Mia','Leo','Zoe','Max','Ava','Sam','Kim','Ben','Lia','Jay','Amy']; return 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + seeds[Math.floor(Math.random()*seeds.length)] + Math.floor(Math.random()*1000); },
       
       async addNotification(title, msg, type='system') {
         if (!this.currentUserData) return;
         if (!this.currentUserData.notifications) this.currentUserData.notifications = [];
-        const safeTitle = sanitizeInput(title);
-        const safeMsg = sanitizeInput(msg);
-        this.currentUserData.notifications.unshift({
-          id: 'n_'+Math.random().toString(36).substr(2,8),
-          title: safeTitle,
-          message: safeMsg,
-          type,
-          date: new Date().toISOString(),
-          read: false
-        });
+        this.currentUserData.notifications.unshift({ id: 'n_'+Math.random().toString(36).substr(2,8), title: sanitizeInput(title), message: sanitizeInput(msg), type, date: new Date().toISOString(), read: false });
         await this.saveUserData();
       },
       
-      getRefFromURL() {
-        const url = new URL(window.location.href);
-        const ref = url.searchParams.get('ref') || '';
-        return sanitizeInput(ref);
-      },
+      getRefFromURL() { const url = new URL(window.location.href); return sanitizeInput(url.searchParams.get('ref') || ''); },
       
       getDeviceFingerprint() {
-        const data = [];
-        data.push(navigator.userAgent);
-        data.push(navigator.language);
-        data.push(screen.colorDepth);
-        data.push(screen.width + 'x' + screen.height);
-        data.push(new Date().getTimezoneOffset());
-        data.push(!!window.sessionStorage);
-        data.push(!!window.localStorage);
-        data.push(navigator.hardwareConcurrency || 'unknown');
-        data.push(navigator.platform || 'unknown');
-        
-        let hash = 0;
-        const str = data.join('###');
-        for (let i = 0; i < str.length; i++) {
-          const char = str.charCodeAt(i);
-          hash = ((hash << 5) - hash) + char;
-          hash = hash & hash;
-        }
+        const data = [navigator.userAgent, navigator.language, screen.colorDepth, screen.width + 'x' + screen.height, new Date().getTimezoneOffset(), !!window.sessionStorage, !!window.localStorage, navigator.hardwareConcurrency || 'unknown', navigator.platform || 'unknown'];
+        let hash = 0; const str = data.join('###');
+        for (let i = 0; i < str.length; i++) { const char = str.charCodeAt(i); hash = ((hash << 5) - hash) + char; hash = hash & hash; }
         return 'DEV_' + Math.abs(hash).toString(36).substr(0, 8).toUpperCase();
       },
       
-      // ============ REFERRAL SYSTEM ============
       async processReferral(refCode, newUserId) {
         if (!refCode) return;
         try {
-          const snapshot = await db.collection('users')
-            .where('referralCode', '==', refCode.toUpperCase())
-            .limit(1)
-            .get();
-          
+          const snapshot = await db.collection('users').where('referralCode', '==', refCode.toUpperCase()).limit(1).get();
           if (snapshot.empty) return;
-          
-          const referrerDoc = snapshot.docs[0];
-          const referrerData = referrerDoc.data();
-          
+          const referrerDoc = snapshot.docs[0]; const referrerData = referrerDoc.data();
           if (referrerDoc.id === newUserId) return;
-          
-          referrerData.referrals = referrerData.referrals || { 
-            l1Count: 0, l2Count: 0, totalEarnings: 0, members: [], pendingBonus: 0
-          };
-          referrerData.referrals.l1Count += 1;
-          referrerData.referrals.validCount = (referrerData.referrals.validCount || 0) + 1;
+          referrerData.referrals = referrerData.referrals || { l1Count: 0, l2Count: 0, totalEarnings: 0, members: [], pendingBonus: 0 };
+          referrerData.referrals.l1Count += 1; referrerData.referrals.validCount = (referrerData.referrals.validCount || 0) + 1;
           referrerData.referrals.pendingBonus = (referrerData.referrals.pendingBonus || 0) + 2;
           referrerData.referrals.members = referrerData.referrals.members || [];
-          referrerData.referrals.members.push({
-            id: newUserId,
-            username: this.currentUserData?.username || 'New User',
-            email: this.currentUserData?.email || '',
-            joinDate: new Date().toISOString(),
-            level: 1,
-            depositMade: false,
-            depositApproved: false
-          });
-          
+          referrerData.referrals.members.push({ id: newUserId, username: this.currentUserData?.username || 'New User', email: this.currentUserData?.email || '', joinDate: new Date().toISOString(), level: 1, depositMade: false, depositApproved: false });
           referrerData.referralTasksCompleted = referrerData.referralTasksCompleted || [];
           referrerData.referralTasksClaimed = referrerData.referralTasksClaimed || [];
-          
-          const safeUsername = sanitizeInput(this.currentUserData?.username || 'Someone');
           referrerData.notifications = referrerData.notifications || [];
-          referrerData.notifications.unshift({
-            id: 'ref_'+Math.random().toString(36).substr(2,8),
-            title: '🤝 New Referral!',
-            message: safeUsername + ' joined via your link. +2 USDT pending until their first deposit is approved!',
-            date: new Date().toISOString(),
-            read: false,
-            type: 'info'
-          });
-          
+          referrerData.notifications.unshift({ id: 'ref_'+Math.random().toString(36).substr(2,8), title: '🤝 New Referral!', message: sanitizeInput(this.currentUserData?.username || 'Someone') + ' joined via your link. +2 USDT pending until their first deposit is approved!', date: new Date().toISOString(), read: false, type: 'info' });
           await db.collection('users').doc(referrerDoc.id).update(referrerData);
-          console.log('✅ Referral recorded');
-        } catch (error) {
-          console.error('Error processing referral:', error);
-        }
+        } catch (error) { console.error('Error processing referral:', error); }
       },
       
       async processReferralBonusOnDepositApproval(newUserId) {
         if (!this.currentUserData?.referredBy) return;
-        
         try {
-          const snapshot = await db.collection('users')
-            .where('referralCode', '==', this.currentUserData.referredBy.toUpperCase())
-            .limit(1)
-            .get();
-          
+          const snapshot = await db.collection('users').where('referralCode', '==', this.currentUserData.referredBy.toUpperCase()).limit(1).get();
           if (snapshot.empty) return;
-          
-          const referrerDoc = snapshot.docs[0];
-          const referrerData = referrerDoc.data();
-          
+          const referrerDoc = snapshot.docs[0]; const referrerData = referrerDoc.data();
           const memberEntry = referrerData.referrals?.members?.find(m => m.id === newUserId);
-          if (memberEntry?.depositApproved) {
-            console.log('⚠️ Bonus already paid for this referral');
-            return;
-          }
-          
-          // Add 2 USDT bonus
-          referrerData.balance = referrerData.balance || { usdt: 0 };
-          referrerData.balance.usdt = (referrerData.balance.usdt || 0) + 2;
+          if (memberEntry?.depositApproved) return;
+          referrerData.balance = referrerData.balance || { usdt: 0 }; referrerData.balance.usdt = (referrerData.balance.usdt || 0) + 2;
           referrerData.totalEarned = (referrerData.totalEarned || 0) + 2;
-          referrerData.referrals = referrerData.referrals || {};
-          referrerData.referrals.totalEarnings = (referrerData.referrals.totalEarnings || 0) + 2;
+          referrerData.referrals = referrerData.referrals || {}; referrerData.referrals.totalEarnings = (referrerData.referrals.totalEarnings || 0) + 2;
           referrerData.referrals.pendingBonus = Math.max(0, (referrerData.referrals.pendingBonus || 0) - 2);
-          
-          // Update member status
-          if (referrerData.referrals.members) {
-            referrerData.referrals.members = referrerData.referrals.members.map(m => {
-              if (m.id === newUserId) {
-                return { ...m, depositApproved: true, depositMade: true };
-              }
-              return m;
-            });
-          }
-          
+          if (referrerData.referrals.members) { referrerData.referrals.members = referrerData.referrals.members.map(m => m.id === newUserId ? { ...m, depositApproved: true, depositMade: true } : m); }
           referrerData.referralTasksCompleted = referrerData.referralTasksCompleted || [];
           referrerData.referralTasksClaimed = referrerData.referralTasksClaimed || [];
-          
-          const safeUsername = sanitizeInput(this.currentUserData?.username || 'User');
           referrerData.notifications = referrerData.notifications || [];
-          referrerData.notifications.unshift({
-            id: 'ref_bonus_'+Math.random().toString(36).substr(2,8),
-            title: '💰 Referral Bonus Released!',
-            message: '+2 USDT - ' + safeUsername + ' deposit approved! Check your tasks!',
-            date: new Date().toISOString(),
-            read: false,
-            type: 'reward'
-          });
-          
+          referrerData.notifications.unshift({ id: 'ref_bonus_'+Math.random().toString(36).substr(2,8), title: '💰 Referral Bonus Released!', message: '+2 USDT - ' + sanitizeInput(this.currentUserData?.username || 'User') + ' deposit approved!', date: new Date().toISOString(), read: false, type: 'reward' });
           referrerData.transactions = referrerData.transactions || [];
-          referrerData.transactions.unshift({
-            id: 'tx_'+Math.random().toString(36).substr(2,8),
-            type: 'referral_commission',
-            amount: 2,
-            currency: 'USDT',
-            date: new Date().toISOString(),
-            status: 'completed',
-            details: 'Referral deposit approved - ' + safeUsername
-          });
-          
+          referrerData.transactions.unshift({ id: 'tx_'+Math.random().toString(36).substr(2,8), type: 'referral_commission', amount: 2, currency: 'USDT', date: new Date().toISOString(), status: 'completed', details: 'Referral deposit approved' });
           await db.collection('users').doc(referrerDoc.id).update(referrerData);
-          
-          // Check and update referral tasks for referrer
           await this.checkReferralTasks(referrerDoc.id, referrerData);
-          
-          console.log('✅ Referral bonus paid after deposit approval');
-        } catch (error) {
-          console.error('Error processing referral bonus:', error);
-        }
+        } catch (error) { console.error('Error processing referral bonus:', error); }
       },
       
-      // ============ REFERRAL TASKS SYSTEM ============
-      getActiveDepositCount() {
-        if (!this.currentUserData?.referrals?.members) return 0;
-        return this.currentUserData.referrals.members.filter(m => m.depositApproved === true).length;
-      },
+      getActiveDepositCount() { if (!this.currentUserData?.referrals?.members) return 0; return this.currentUserData.referrals.members.filter(m => m.depositApproved === true).length; },
       
       getCompletedTasks() {
         const activeCount = this.getActiveDepositCount();
-        const completed = this.currentUserData?.referralTasksCompleted || [];
         const claimed = this.currentUserData?.referralTasksClaimed || [];
-        
-        return REFERRAL_TASKS.map(task => ({
-          ...task,
-          completed: activeCount >= task.required,
-          claimed: claimed.includes(task.required),
-          progress: Math.min(100, Math.round((activeCount / task.required) * 100)),
-          remaining: Math.max(0, task.required - activeCount)
-        }));
+        return REFERRAL_TASKS.map(task => ({ ...task, completed: activeCount >= task.required, claimed: claimed.includes(task.required), progress: Math.min(100, Math.round((activeCount / task.required) * 100)), remaining: Math.max(0, task.required - activeCount) }));
       },
       
       async checkReferralTasks(uid, userData) {
-        const data = userData || this.currentUserData;
-        if (!data) return;
-        
+        const data = userData || this.currentUserData; if (!data) return;
         const activeCount = (data.referrals?.members || []).filter(m => m.depositApproved === true).length;
         const completed = data.referralTasksCompleted || [];
-        const claimed = data.referralTasksClaimed || [];
-        
         let tasksUpdated = false;
-        
-        REFERRAL_TASKS.forEach(task => {
-          if (activeCount >= task.required && !completed.includes(task.required)) {
-            completed.push(task.required);
-            tasksUpdated = true;
-          }
-        });
-        
-        if (tasksUpdated) {
-          data.referralTasksCompleted = completed;
-          if (uid) {
-            await db.collection('users').doc(uid).update({ referralTasksCompleted: completed });
-          } else {
-            await this.saveUserData();
-          }
-          
-          // Notify user
-          await this.addNotification(
-            '🏆 Task Completed!',
-            'You have completed a referral task! Check your referral page to claim rewards.',
-            'reward'
-          );
-        }
+        REFERRAL_TASKS.forEach(task => { if (activeCount >= task.required && !completed.includes(task.required)) { completed.push(task.required); tasksUpdated = true; } });
+        if (tasksUpdated) { data.referralTasksCompleted = completed; if (uid) await db.collection('users').doc(uid).update({ referralTasksCompleted: completed }); else await this.saveUserData(); await this.addNotification('🏆 Task Completed!', 'You have completed a referral task! Check your referral page.', 'reward'); }
       },
       
       async claimReferralTask(taskRequired) {
         if (!this.currentUserData) return;
-        
-        const completed = this.currentUserData.referralTasksCompleted || [];
-        const claimed = this.currentUserData.referralTasksClaimed || [];
-        
-        if (!completed.includes(taskRequired)) {
-          showToast('❌ Task not completed yet!', 'error');
-          return;
-        }
-        
-        if (claimed.includes(taskRequired)) {
-          showToast('❌ Reward already claimed!', 'error');
-          return;
-        }
-        
-        const task = REFERRAL_TASKS.find(t => t.required === taskRequired);
-        if (!task) return;
-        
-        // Add reward
+        const completed = this.currentUserData.referralTasksCompleted || [], claimed = this.currentUserData.referralTasksClaimed || [];
+        if (!completed.includes(taskRequired)) { showToast('❌ Task not completed yet!', 'error'); return; }
+        if (claimed.includes(taskRequired)) { showToast('❌ Reward already claimed!', 'error'); return; }
+        const task = REFERRAL_TASKS.find(t => t.required === taskRequired); if (!task) return;
         this.currentUserData.balance.usdt = (this.currentUserData.balance.usdt || 0) + task.reward;
         this.currentUserData.totalEarned = (this.currentUserData.totalEarned || 0) + task.reward;
         this.currentUserData.referrals.totalEarnings = (this.currentUserData.referrals.totalEarnings || 0) + task.reward;
-        claimed.push(taskRequired);
-        this.currentUserData.referralTasksClaimed = claimed;
-        
-        this.currentUserData.transactions.unshift({
-          id: 'tx_'+Math.random().toString(36).substr(2,8),
-          type: 'referral_task',
-          amount: task.reward,
-          currency: 'USDT',
-          date: new Date().toISOString(),
-          status: 'completed',
-          details: `Referral Task: ${task.label}`
-        });
-        
-        await this.addNotification(
-          '🏆 Task Reward Claimed!',
-          `+${task.reward} USDT for ${task.label}!`,
-          'reward'
-        );
-        
-        await this.saveUserData();
-        showToast(`🎉 +${task.reward} USDT Claimed!`, 'reward');
-        spawnConfetti(40);
-        this.route();
+        claimed.push(taskRequired); this.currentUserData.referralTasksClaimed = claimed;
+        this.currentUserData.transactions.unshift({ id: 'tx_'+Math.random().toString(36).substr(2,8), type: 'referral_task', amount: task.reward, currency: 'USDT', date: new Date().toISOString(), status: 'completed', details: `Referral Task: ${task.label}` });
+        await this.addNotification('🏆 Task Reward Claimed!', `+${task.reward} USDT for ${task.label}!`, 'reward');
+        await this.saveUserData(); showToast(`🎉 +${task.reward} USDT Claimed!`, 'reward'); spawnConfetti(40); this.route();
       },
       
-      async loadDepositBonusCount() {
-        try {
-          const snapshot = await db.collection('users')
-            .where('depositBonusClaimed', '==', true)
-            .get();
-          this._depositBonusRemaining = Math.max(0, 1000 - snapshot.size);
-        } catch (error) {
-          console.error('Error loading bonus count:', error);
-          this._depositBonusRemaining = 1000;
-        }
-      },
+      async loadDepositBonusCount() { try { const snapshot = await db.collection('users').where('depositBonusClaimed', '==', true).get(); this._depositBonusRemaining = Math.max(0, 1000 - snapshot.size); } catch (error) { this._depositBonusRemaining = 1000; } },
       
       async claimDepositBonus() {
         if (!this.currentUserData) return;
-        if (this.currentUserData.depositBonusClaimed) {
-          showToast('Bonus already claimed!', 'info');
-          return;
-        }
-        if (!this.currentUserData.firstDepositApproved) {
-          showToast('❌ Your first deposit must be approved first!', 'error');
-          return;
-        }
-        if (this._depositBonusRemaining <= 0) {
-          showToast('Sorry, all 1,000 bonuses have been claimed!', 'error');
-          return;
-        }
-        
+        if (this.currentUserData.depositBonusClaimed) { showToast('Bonus already claimed!', 'info'); return; }
+        if (!this.currentUserData.firstDepositApproved) { showToast('❌ Your first deposit must be approved first!', 'error'); return; }
+        if (this._depositBonusRemaining <= 0) { showToast('Sorry, all bonuses claimed!', 'error'); return; }
         const bonusAmount = 5;
-        this.currentUserData.balance.usdt += bonusAmount;
-        this.currentUserData.totalEarned += bonusAmount;
-        this.currentUserData.depositBonusClaimed = true;
-        this._depositBonusRemaining--;
-        
-        this.currentUserData.transactions.unshift({
-          id: 'tx_'+Math.random().toString(36).substr(2,8),
-          type: 'deposit_bonus',
-          amount: bonusAmount,
-          currency: 'USDT',
-          date: new Date().toISOString(),
-          status: 'completed',
-          details: '5 USDT First Deposit Bonus'
-        });
-        
-        await this.saveUserData();
-        showToast('🎉 5 USDT Welcome bonus claimed!', 'reward');
-        spawnConfetti(30);
-        this.route();
+        this.currentUserData.balance.usdt += bonusAmount; this.currentUserData.totalEarned += bonusAmount;
+        this.currentUserData.depositBonusClaimed = true; this._depositBonusRemaining--;
+        this.currentUserData.transactions.unshift({ id: 'tx_'+Math.random().toString(36).substr(2,8), type: 'deposit_bonus', amount: bonusAmount, currency: 'USDT', date: new Date().toISOString(), status: 'completed', details: '5 USDT First Deposit Bonus' });
+        await this.saveUserData(); showToast('🎉 5 USDT Welcome bonus claimed!', 'reward'); spawnConfetti(30); this.route();
       },
 
-      // ============ AUTH METHODS ============
       async loginWithEmail(email, password) {
         try {
           const userCredential = await auth.signInWithEmailAndPassword(email, password);
-          
           const userDoc = await db.collection('users').doc(userCredential.user.uid).get();
-          if (userDoc.exists) {
-            this.currentUserData = userDoc.data();
-            this.currentUserData.id = userCredential.user.uid;
-            this.ensureDefaults();
-            
-            if (this.currentUserData.twoFactorEnabled) {
-              this.show2FAModal(userCredential.user);
-              return '2fa_required';
-            }
-          }
-          
+          if (userDoc.exists) { this.currentUserData = userDoc.data(); this.currentUserData.id = userCredential.user.uid; this.ensureDefaults(); if (this.currentUserData.twoFactorEnabled) { this.show2FAModal(userCredential.user); return '2fa_required'; } }
           return true;
         } catch (error) {
-          console.error('❌ Login error:', error);
           let message = 'Login failed';
-          switch (error.code) {
-            case 'auth/user-not-found': message = 'No account found'; break;
-            case 'auth/wrong-password': case 'auth/invalid-credential': message = 'Invalid credentials'; break;
-            case 'auth/invalid-email': message = 'Invalid email'; break;
-            case 'auth/too-many-requests': message = 'Too many attempts'; break;
-            default: message = error.message;
-          }
-          showToast('❌ ' + message, 'error');
-          return false;
+          switch (error.code) { case 'auth/user-not-found': message = 'No account found'; break; case 'auth/wrong-password': case 'auth/invalid-credential': message = 'Invalid credentials'; break; case 'auth/invalid-email': message = 'Invalid email'; break; case 'auth/too-many-requests': message = 'Too many attempts'; break; default: message = error.message; }
+          showToast('❌ ' + message, 'error'); return false;
         }
       },
       
       show2FAModal(user) {
         const secret = this.currentUserData?.twoFactorSecret;
         const currentCode = secret ? this.generateTOTPCode(secret) : '------';
-        
-        const content = `
-          <div class="text-center">
-            <div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"><span class="text-3xl">🔐</span></div>
-            <h2 class="text-xl font-bold mb-2">Two-Factor Authentication</h2>
-            <p class="text-sm text-gray-400 mb-4">Enter the 6-digit code from your authenticator app</p>
-            <input type="text" id="2fa-login-code" maxlength="6" placeholder="000000" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white text-center text-2xl tracking-widest outline-none focus:border-gold-500/50 mb-4" autocomplete="off">
-            <button id="verify-2fa-login-btn" class="w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold">${btnHTML('Verify & Login')}</button>
-            <button id="cancel-2fa-login-btn" class="w-full mt-3 text-gray-400 text-sm">Cancel</button>
-          </div>`;
-        
+        const content = `<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"><span class="text-3xl">🔐</span></div><h2 class="text-xl font-bold mb-2">Two-Factor Authentication</h2><p class="text-sm text-gray-400 mb-4">Enter 6-digit code</p><input type="text" id="2fa-login-code" maxlength="6" placeholder="000000" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white text-center text-2xl tracking-widest outline-none focus:border-gold-500/50 mb-4"><button id="verify-2fa-login-btn" class="w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold">${btnHTML('Verify & Login')}</button><button id="cancel-2fa-login-btn" class="w-full mt-3 text-gray-400 text-sm">Cancel</button></div>`;
         this.openModal(content);
-        
         setTimeout(() => {
-          document.getElementById('cancel-2fa-login-btn')?.addEventListener('click', async () => {
-            this.closeModal();
-            await auth.signOut();
-          });
-          
+          document.getElementById('cancel-2fa-login-btn')?.addEventListener('click', async () => { this.closeModal(); await auth.signOut(); });
           document.getElementById('verify-2fa-login-btn')?.addEventListener('click', async () => {
-            const btn = document.getElementById('verify-2fa-login-btn');
-            setButtonLoading(btn, true);
-            
+            const btn = document.getElementById('verify-2fa-login-btn'); setButtonLoading(btn, true);
             const code = document.getElementById('2fa-login-code')?.value?.trim();
-            
-            if (!code || code.length !== 6) {
-              showToast('Enter valid 6-digit code', 'error');
-              setButtonLoading(btn, false);
-              return;
-            }
-            
-            const expectedCode = this.generateTOTPCode(this.currentUserData.twoFactorSecret);
-            
-            if (code === expectedCode) {
-              this.closeModal();
-              this.route();
-              showToast('✅ 2FA Verified! Welcome!', 'success');
-              spawnConfetti(20);
-            } else {
-              showToast('❌ Invalid 2FA code!', 'error');
-              setButtonLoading(btn, false);
-            }
+            if (!code || code.length !== 6) { showToast('Enter valid 6-digit code', 'error'); setButtonLoading(btn, false); return; }
+            if (code === this.generateTOTPCode(this.currentUserData.twoFactorSecret)) { this.closeModal(); this.route(); showToast('✅ 2FA Verified!', 'success'); spawnConfetti(20); }
+            else { showToast('❌ Invalid 2FA code!', 'error'); setButtonLoading(btn, false); }
           });
         }, 100);
       },
       
-      generateTOTPSecret() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        let secret = '';
-        for (let i = 0; i < 16; i++) {
-          secret += chars[Math.floor(Math.random() * chars.length)];
-        }
-        return secret;
-      },
-      
-      generateTOTPCode(secret) {
-        if (!secret) return '000000';
-        const now = Math.floor(Date.now() / 30000);
-        let hash = 0;
-        const combined = secret + now.toString();
-        for (let i = 0; i < combined.length; i++) {
-          hash = ((hash << 5) - hash) + combined.charCodeAt(i);
-          hash = hash & hash;
-        }
-        return Math.abs(hash % 1000000).toString().padStart(6, '0');
-      },
+      generateTOTPSecret() { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; let secret = ''; for (let i = 0; i < 16; i++) secret += chars[Math.floor(Math.random() * chars.length)]; return secret; },
+      generateTOTPCode(secret) { if (!secret) return '000000'; const now = Math.floor(Date.now() / 30000); let hash = 0; const combined = secret + now.toString(); for (let i = 0; i < combined.length; i++) { hash = ((hash << 5) - hash) + combined.charCodeAt(i); hash = hash & hash; } return Math.abs(hash % 1000000).toString().padStart(6, '0'); },
       
       async registerWithEmail(email, password, username, pin, refCode) {
         try {
           const deviceId = this.getDeviceFingerprint();
-          const existingDevice = await db.collection('users')
-            .where('deviceId', '==', deviceId)
-            .limit(1)
-            .get();
-          
-          if (!existingDevice.empty) {
-            showToast('❌ This device is already registered!', 'error');
-            return false;
-          }
-          
-          const safeUsername = sanitizeInput(username);
-          const safeEmail = sanitizeInput(email);
-          const safeRef = sanitizeInput(refCode || '');
-          
+          const existingDevice = await db.collection('users').where('deviceId', '==', deviceId).limit(1).get();
+          if (!existingDevice.empty) { showToast('❌ This device is already registered!', 'error'); return false; }
+          const safeUsername = sanitizeInput(username), safeEmail = sanitizeInput(email), safeRef = sanitizeInput(refCode || '');
           const userCredential = await auth.createUserWithEmailAndPassword(safeEmail, password);
-          
           const newUser = {
-            id: userCredential.user.uid,
-            email: safeEmail,
-            password: password, // Education purpose - stored in Firestore
-            emailVerified: true,
-            username: safeUsername,
-            deviceId: deviceId,
-            avatarUrl: this.generateAvatar(),
-            balance: { usdt: 0, trx: 0 },
-            vipLevel: 0,
-            referralCode: 'GOLD' + Math.random().toString(36).substr(2, 5).toUpperCase(),
-            referredBy: safeRef || null,
-            walletAddress: null,
-            walletAddressSetAt: null,
-            joinDate: new Date().toISOString(),
-            plans: [],
-            referrals: { 
-              l1Count: 0, l2Count: 0, validCount: 0, totalEarnings: 0, 
-              members: [], pendingBonus: 0 
-            },
-            referralTasksCompleted: [],
-            referralTasksClaimed: [],
-            transactions: [],
-            notifications: [{
-              id: 'welcome',
-              title: '🎉 Welcome!',
-              message: 'Account created! Make your first deposit to start earning!',
-              date: new Date().toISOString(),
-              read: false,
-              type: 'reward'
-            }],
-            spinAvailable: 0,
-            lastCheckIn: null,
-            _checkinDate: null,
-            securityPin: pin,
-            twoFactorEnabled: false,
-            twoFactorSecret: null,
-            totalDeposited: 0,
-            totalWithdrawn: 0,
-            totalEarned: 0,
-            miningPower: 0,
-            lastMiningClaim: null,
-            depositBonusClaimed: false,
-            hasMadeFirstDeposit: false,
-            firstDepositApproved: false
+            id: userCredential.user.uid, email: safeEmail, password: password, emailVerified: true, username: safeUsername, deviceId: deviceId,
+            avatarUrl: this.generateAvatar(), balance: { usdt: 0, trx: 0 }, vipLevel: 0,
+            referralCode: 'GOLD' + Math.random().toString(36).substr(2, 5).toUpperCase(), referredBy: safeRef || null,
+            walletAddress: null, walletAddressSetAt: null, joinDate: new Date().toISOString(), plans: [],
+            referrals: { l1Count: 0, l2Count: 0, validCount: 0, totalEarnings: 0, members: [], pendingBonus: 0 },
+            referralTasksCompleted: [], referralTasksClaimed: [], transactions: [],
+            notifications: [{ id: 'welcome', title: '🎉 Welcome!', message: 'Account created! Start AI Copy Trading to earn!', date: new Date().toISOString(), read: false, type: 'reward' }],
+            spinAvailable: 0, lastCheckIn: null, _checkinDate: null, securityPin: pin, twoFactorEnabled: false, twoFactorSecret: null,
+            totalDeposited: 0, totalWithdrawn: 0, totalEarned: 0, miningPower: 0, lastMiningClaim: null,
+            depositBonusClaimed: false, hasMadeFirstDeposit: false, firstDepositApproved: false,
+            copyTradeCount: 0, copyTradeResetDate: null
           };
-          
           await db.collection('users').doc(userCredential.user.uid).set(newUser);
           this.currentUserData = newUser;
-          
-          if (safeRef) {
-            await this.processReferral(safeRef, userCredential.user.uid);
-          }
-          
-          showToast('🎉 Account created! Welcome!', 'success');
-          spawnConfetti(20);
-          return true;
+          if (safeRef) await this.processReferral(safeRef, userCredential.user.uid);
+          showToast('🎉 Account created! Welcome!', 'success'); spawnConfetti(20); return true;
         } catch (error) {
-          console.error('❌ Registration error:', error);
           let message = 'Registration failed';
-          switch (error.code) {
-            case 'auth/email-already-in-use': message = 'Email already registered'; break;
-            case 'auth/invalid-email': message = 'Invalid email format'; break;
-            case 'auth/weak-password': message = 'Password must be at least 6 characters'; break;
-            default: message = error.message;
-          }
-          showToast('❌ ' + message, 'error');
-          return false;
+          switch (error.code) { case 'auth/email-already-in-use': message = 'Email already registered'; break; case 'auth/invalid-email': message = 'Invalid email format'; break; case 'auth/weak-password': message = 'Password must be at least 6 characters'; break; default: message = error.message; }
+          showToast('❌ ' + message, 'error'); return false;
         }
       },
       
-      async logout() {
-        try {
-          await auth.signOut();
-          this.user = null;
-          this.currentUserData = null;
-          showToast('👋 Signed out', 'info');
-          window.location.hash = 'login';
-        } catch (error) {
-          console.error('Logout error:', error);
-        }
-      },
+      async logout() { try { await auth.signOut(); this.user = null; this.currentUserData = null; showToast('👋 Signed out', 'info'); window.location.hash = 'login'; } catch (error) { console.error('Logout error:', error); } },
       
       route() {
         if (!this._initialized) return;
-        
         const hash = window.location.hash.replace('#', '') || 'login';
         const authPages = ['login', 'register'];
-        
-        if (!auth.currentUser && !authPages.includes(hash)) {
-          window.location.hash = 'login';
-          this.currentPage = 'login';
-        } else if (auth.currentUser && authPages.includes(hash)) {
-          window.location.hash = 'home';
-          this.currentPage = 'home';
-        } else {
-          this.currentPage = hash;
-        }
-        
-        this.renderPage(this.currentPage);
-        this.renderNav();
-        this.closeModal();
+        if (!auth.currentUser && !authPages.includes(hash)) { window.location.hash = 'login'; this.currentPage = 'login'; }
+        else if (auth.currentUser && authPages.includes(hash)) { window.location.hash = 'home'; this.currentPage = 'home'; }
+        else this.currentPage = hash;
+        this.renderPage(this.currentPage); this.renderNav(); this.closeModal();
       },
       
       renderPage(page) {
-        const main = document.getElementById('main-content');
-        if (!main) return;
-        
-        const pages = { 
-          login: 'renderLogin', register: 'renderRegister', home: 'renderHome', 
-          vip: 'renderVIP', deposit: 'renderDeposit', withdraw: 'renderWithdraw', 
-          history: 'renderHistory', profile: 'renderProfile', referral: 'renderReferral', 
-          plans: 'renderPlans', spin: 'renderSpin', mining: 'renderMining', 
-          settings: 'renderSettings' 
-        };
-        
+        const main = document.getElementById('main-content'); if (!main) return;
+        const pages = { login: 'renderLogin', register: 'renderRegister', home: 'renderHome', vip: 'renderVIP', deposit: 'renderDeposit', withdraw: 'renderWithdraw', history: 'renderHistory', profile: 'renderProfile', referral: 'renderReferral', plans: 'renderPlans', spin: 'renderSpin', mining: 'renderMining', settings: 'renderSettings', 'copy-trading': 'renderCopyTrading', 'copy-history': 'renderCopyHistory' };
         const fn = pages[page];
-        if (fn && typeof this[fn] === 'function') {
-          main.innerHTML = this[fn]();
-        } else {
-          main.innerHTML = this.renderLogin();
-        }
-        
-        requestAnimationFrame(() => {
-          this.attachEvents(page);
-          if (window.lucide) {
-            try { lucide.createIcons(); } catch(e) {}
-          }
-        });
+        if (fn && typeof this[fn] === 'function') main.innerHTML = this[fn]();
+        else main.innerHTML = this.renderLogin();
+        requestAnimationFrame(() => { this.attachEvents(page); if (window.lucide) { try { lucide.createIcons(); } catch(e) {} } });
       },
       
       renderNav() {
-        const nav = document.getElementById('bottom-nav');
-        const navItems = document.getElementById('nav-items');
+        const nav = document.getElementById('bottom-nav'), navItems = document.getElementById('nav-items');
         if (!nav || !navItems) return;
-        
-        if (['login','register'].includes(this.currentPage) || !auth.currentUser) { 
-          nav.style.display = 'none'; 
-          return; 
-        }
+        if (['login','register'].includes(this.currentPage) || !auth.currentUser) { nav.style.display = 'none'; return; }
         nav.style.display = 'flex';
-        
         const items = [
           { path: 'home', icon: 'home', label: 'Home' },
           { path: 'vip', icon: 'shield', label: 'VIP' },
-          { path: 'deposit', icon: 'plus-circle', label: 'Deposit', center: true },
+          { path: 'copy-trading', icon: 'cpu', label: 'Copy', center: true },
           { path: 'referral', icon: 'users', label: 'Team' },
           { path: 'profile', icon: 'user', label: 'Me' }
         ];
-        
         navItems.innerHTML = items.map(item => {
           const active = this.currentPage === item.path;
           if (item.center) {
-            return `<a href="#deposit" class="relative -top-5 flex flex-col items-center">
-              <div class="w-14 h-14 rounded-full bg-gradient-gold p-[3px] shadow-[0_0_25px_rgba(212,175,55,0.5)] animate-pulse-glow">
-                <div class="w-full h-full rounded-full bg-[#121212] flex items-center justify-center"><i data-lucide="plus" class="w-7 h-7 text-gold-400"></i></div>
-              </div><span class="text-[10px] font-semibold mt-1 text-gold-400">Deposit</span></a>`;
+            return `<a href="#copy-trading" class="relative -top-5 flex flex-col items-center"><div class="w-14 h-14 rounded-full bg-gradient-gold p-[3px] shadow-[0_0_25px_rgba(212,175,55,0.5)] animate-pulse-glow"><div class="w-full h-full rounded-full bg-[#121212] flex items-center justify-center"><i data-lucide="cpu" class="w-7 h-7 text-gold-400"></i></div></div><span class="text-[10px] font-semibold mt-1 text-gold-400">Copy</span></a>`;
           }
-          return `<a href="#${item.path}" class="flex flex-col items-center justify-center w-12 h-12">
-            <i data-lucide="${item.icon}" class="w-5 h-5 mb-1 ${active ? 'text-gold-400' : 'text-gray-500'}"></i>
-            <span class="text-[10px] font-semibold ${active ? 'text-gold-400' : 'text-gray-500'}">${item.label}</span>
-            ${active ? '<div class="absolute -top-1 w-5 h-1 bg-gradient-gold rounded-full"></div>' : ''}
-          </a>`;
+          return `<a href="#${item.path}" class="flex flex-col items-center justify-center w-12 h-12"><i data-lucide="${item.icon}" class="w-5 h-5 mb-1 ${active ? 'text-gold-400' : 'text-gray-500'}"></i><span class="text-[10px] font-semibold ${active ? 'text-gold-400' : 'text-gray-500'}">${item.label}</span>${active ? '<div class="absolute -top-1 w-5 h-1 bg-gradient-gold rounded-full"></div>' : ''}</a>`;
         }).join('');
-        
         setTimeout(() => { if (window.lucide) { try { lucide.createIcons(); } catch(e) {} } }, 50);
       },
       
       attachEvents(page) {
         switch(page) {
-          case 'login': this.attachLoginEvents(); break;
-          case 'register': this.attachRegisterEvents(); break;
-          case 'home': this.attachHomeEvents(); break;
-          case 'deposit': this.attachDepositEvents(); break;
-          case 'withdraw': this.attachWithdrawEvents(); break;
-          case 'referral': this.attachReferralEvents(); break;
-          case 'vip': this.attachVIPEvents(); break;
-          case 'spin': this.attachSpinEvents(); break;
-          case 'mining': this.attachMiningEvents(); break;
-          case 'settings': this.attachSettingsEvents(); break;
-          case 'profile': this.attachProfileEvents(); break;
-          case 'plans': this.attachPlansEvents(); break;
+          case 'login': this.attachLoginEvents(); break; case 'register': this.attachRegisterEvents(); break;
+          case 'home': this.attachHomeEvents(); break; case 'deposit': this.attachDepositEvents(); break;
+          case 'withdraw': this.attachWithdrawEvents(); break; case 'referral': this.attachReferralEvents(); break;
+          case 'vip': this.attachVIPEvents(); break; case 'spin': this.attachSpinEvents(); break;
+          case 'mining': this.attachMiningEvents(); break; case 'settings': this.attachSettingsEvents(); break;
+          case 'profile': this.attachProfileEvents(); break; case 'plans': this.attachPlansEvents(); break;
+          case 'copy-trading': this.attachCopyTradingEvents(); break;
         }
       },
       
       openModal(content) {
-        const modal = document.getElementById('global-modal');
-        const body = document.getElementById('global-modal-content');
-        if (!modal || !body) return;
-        body.innerHTML = content;
-        modal.classList.add('show');
+        const modal = document.getElementById('global-modal'), body = document.getElementById('global-modal-content');
+        if (!modal || !body) return; body.innerHTML = content; modal.classList.add('show');
         modal.onclick = (e) => { if (e.target === modal) this.closeModal(); };
         setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 100);
       },
-      
-      closeModal() {
-        const modal = document.getElementById('global-modal');
-        if (modal) modal.classList.remove('show');
-      },
-      
-      escapeHTML(str) {
-        const div = document.createElement('div');
-        div.textContent = str || '';
-        return div.innerHTML;
-      },
+      closeModal() { const modal = document.getElementById('global-modal'); if (modal) modal.classList.remove('show'); },
+      escapeHTML(str) { const div = document.createElement('div'); div.textContent = str || ''; return div.innerHTML; },
 
-      // ============ RENDER METHODS ============
       renderLogin() {
-        return `
-        <div class="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a]">
-          <div class="w-full max-w-sm animate-fadeInUp">
-            <div class="text-center mb-10">
-              <div class="w-20 h-20 bg-gradient-gold rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl animate-float" style="font-size:40px;">👑</div>
-              <h1 class="text-4xl font-serif font-black tracking-wider">GOLDEN<span class="text-gradient-gold">POWER</span></h1>
-              <p class="text-gray-400 mt-2 text-xs tracking-widest uppercase">Elite Wealth Ecosystem</p>
-            </div>
-            <div class="glass-panel rounded-3xl p-7 shadow-2xl">
-              <div class="flex mb-7 bg-black/50 rounded-xl p-1.5">
-                <a href="#login" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all bg-gradient-gold text-black shadow-lg">Sign In</a>
-                <a href="#register" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all text-gray-400">Register</a>
-              </div>
-              <form id="login-form" class="space-y-4">
-                <div><label class="text-xs text-gray-400 block mb-1.5">Email Address</label>
-                  <input type="email" id="login-email" placeholder="your@email.com" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div>
-                <div><label class="text-xs text-gray-400 block mb-1.5">Password</label>
-                  <input type="password" id="login-password" placeholder="••••••" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div>
-                <button type="submit" class="w-full bg-gradient-gold text-black font-bold py-4 rounded-xl shadow-lg ripple">${btnHTML('🚀 Access Vault')}</button>
-              </form>
-              <p class="text-[10px] text-gray-600 mt-4 text-center">🔐 Secured with Firebase Auth + 2FA</p>
-            </div>
-          </div>
-        </div>`;
+        return `<div class="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a]"><div class="w-full max-w-sm animate-fadeInUp"><div class="text-center mb-10"><div class="w-20 h-20 bg-gradient-gold rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl animate-float" style="font-size:40px;">👑</div><h1 class="text-4xl font-serif font-black tracking-wider">GOLDEN<span class="text-gradient-gold">POWER</span></h1><p class="text-gray-400 mt-2 text-xs tracking-widest uppercase">AI Copy Trading Elite</p></div><div class="glass-panel rounded-3xl p-7 shadow-2xl"><div class="flex mb-7 bg-black/50 rounded-xl p-1.5"><a href="#login" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all bg-gradient-gold text-black shadow-lg">Sign In</a><a href="#register" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all text-gray-400">Register</a></div><form id="login-form" class="space-y-4"><div><label class="text-xs text-gray-400 block mb-1.5">Email Address</label><input type="email" id="login-email" placeholder="your@email.com" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div><div><label class="text-xs text-gray-400 block mb-1.5">Password</label><input type="password" id="login-password" placeholder="••••••" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div><button type="submit" class="w-full bg-gradient-gold text-black font-bold py-4 rounded-xl shadow-lg ripple">${btnHTML('🚀 Access AI Vault')}</button></form><p class="text-[10px] text-gray-600 mt-4 text-center">🔐 AI-Powered Copy Trading · Firebase 2FA</p></div></div></div>`;
       },
       
       renderRegister() {
         const refCode = this.getRefFromURL();
-        return `
-        <div class="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a]">
-          <div class="w-full max-w-sm animate-fadeInUp">
-            <div class="text-center mb-10">
-              <div class="w-20 h-20 bg-gradient-gold rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl animate-float" style="font-size:40px;">⭐</div>
-              <h1 class="text-4xl font-serif font-black tracking-wider">GOLDEN<span class="text-gradient-gold">POWER</span></h1>
-              <p class="text-gray-400 mt-2 text-xs tracking-widest uppercase">Create Your Elite Account</p>
-            </div>
-            <div class="glass-panel rounded-3xl p-7 shadow-2xl">
-              <div class="flex mb-7 bg-black/50 rounded-xl p-1.5">
-                <a href="#login" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all text-gray-400">Sign In</a>
-                <a href="#register" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all bg-gradient-gold text-black shadow-lg">Register</a>
-              </div>
-              <form id="register-form" class="space-y-4">
-                <div><label class="text-xs text-gray-400 block mb-1.5">Username</label>
-                  <input type="text" id="reg-username" placeholder="Username" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div>
-                <div><label class="text-xs text-gray-400 block mb-1.5">Email Address</label>
-                  <input type="email" id="reg-email" placeholder="your@email.com" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div>
-                <div><label class="text-xs text-gray-400 block mb-1.5">Password</label>
-                  <input type="password" id="reg-password" placeholder="*******" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div>
-                <div><label class="text-xs text-gray-400 block mb-1.5">6‑Digit Security PIN</label>
-                  <input type="password" id="reg-pin" maxlength="6" placeholder="*******" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div>
-                <div><label class="text-xs text-gray-400 block mb-1.5">Referral Code ${refCode ? '<span class="text-green-400 text-[10px]">(detected!)</span>' : '(Optional)'}</label>
-                  <input type="text" id="reg-ref" placeholder="GOLDXXXX" value="${refCode}" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all ${refCode ? 'border-gold-500/40' : ''}"></div>
-                <button type="submit" class="w-full bg-gradient-gold text-black font-bold py-4 rounded-xl shadow-lg ripple">${btnHTML('✨ Create Account')}</button>
-              </form>
-              <p class="text-[10px] text-gray-600 mt-4 text-center">By registering you agree to our Terms</p>
-            </div>
-          </div>
-        </div>`;
+        return `<div class="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a]"><div class="w-full max-w-sm animate-fadeInUp"><div class="text-center mb-10"><div class="w-20 h-20 bg-gradient-gold rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl animate-float" style="font-size:40px;">⭐</div><h1 class="text-4xl font-serif font-black tracking-wider">GOLDEN<span class="text-gradient-gold">POWER</span></h1><p class="text-gray-400 mt-2 text-xs tracking-widest uppercase">Create Your AI Trading Account</p></div><div class="glass-panel rounded-3xl p-7 shadow-2xl"><div class="flex mb-7 bg-black/50 rounded-xl p-1.5"><a href="#login" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all text-gray-400">Sign In</a><a href="#register" class="flex-1 py-3 text-center text-sm font-semibold rounded-lg transition-all bg-gradient-gold text-black shadow-lg">Register</a></div><form id="register-form" class="space-y-4"><div><label class="text-xs text-gray-400 block mb-1.5">Username</label><input type="text" id="reg-username" placeholder="Username" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div><div><label class="text-xs text-gray-400 block mb-1.5">Email Address</label><input type="email" id="reg-email" placeholder="your@email.com" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div><div><label class="text-xs text-gray-400 block mb-1.5">Password</label><input type="password" id="reg-password" placeholder="*******" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div><div><label class="text-xs text-gray-400 block mb-1.5">6‑Digit Security PIN</label><input type="password" id="reg-pin" maxlength="6" placeholder="*******" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all" required></div><div><label class="text-xs text-gray-400 block mb-1.5">Referral Code ${refCode ? '<span class="text-green-400 text-[10px]">(detected!)</span>' : '(Optional)'}</label><input type="text" id="reg-ref" placeholder="GOLDXXXX" value="${refCode}" class="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-gold-500/60 transition-all ${refCode ? 'border-gold-500/40' : ''}"></div><button type="submit" class="w-full bg-gradient-gold text-black font-bold py-4 rounded-xl shadow-lg ripple">${btnHTML('✨ Create Account')}</button></form><p class="text-[10px] text-gray-600 mt-4 text-center">By registering you agree to our Terms</p></div></div></div>`;
       },
       
       renderHome() {
@@ -1269,918 +684,324 @@
         const bonusRemaining = this._depositBonusRemaining;
         const depositApproved = u.firstDepositApproved || false;
         const safeUsername = this.escapeHTML(u.username || 'User');
-        
-        return `
-        <div class="pb-4">
-          <header class="px-5 pt-8 pb-4 flex justify-between items-center sticky top-0 bg-[#0a0a0a]/90 backdrop-blur-xl z-40">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.hash='profile';APP.route()">
-              <img src="${u.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}" class="w-11 h-11 rounded-full border-2 border-gold-500/60 shadow-md object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
-              <div><h1 class="font-serif font-bold text-lg">Hi, ${safeUsername}</h1>
-              <p class="text-xs text-gold-400">${u.vipLevel > 0 ? '👑 VIP ' + u.vipLevel : '✦ Explorer'}</p></div>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="APP.openModal(APP.renderNotifications())" class="w-10 h-10 glass-panel rounded-full flex items-center justify-center relative">
-                <i data-lucide="bell" class="w-5 h-5"></i>
-                ${unread ? '<span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>' : ''}
-              </button>
-            </div>
-          </header>
-          <div class="px-5 mt-2 space-y-5">
-            ${!u.hasMadeFirstDeposit ? `
-            <div class="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center">
-              <p class="text-blue-400 font-bold">💡 Make your first deposit!</p>
-              <p class="text-xs text-blue-300 mt-1">Min 50 USDT - Subject to admin approval</p>
-            </div>` : !depositApproved ? `
-            <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 text-center">
-              <p class="text-yellow-400 font-bold">⏳ Deposit pending approval!</p>
-            </div>` : bonusRemaining > 0 && !u.depositBonusClaimed ? `
-            <div class="deposit-bonus-banner">
-              <p class="text-lg">🎉 5 USDT FIRST DEPOSIT BONUS!</p>
-              <p class="text-sm mt-1">Only ${bonusRemaining} left!</p>
-              <button onclick="APP.claimDepositBonus()" class="mt-2 bg-black/30 text-white px-4 py-2 rounded-lg font-bold text-sm">Claim 5 USDT 🚀</button>
-            </div>` : ''}
-            
-            <div class="rounded-3xl bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] p-6 border border-gold-500/15 shadow-xl animate-fadeInUp">
-              <span class="text-xs text-gray-400 uppercase tracking-wider">Portfolio Value</span>
-              <p class="text-4xl font-serif font-bold mt-1">$${totalValue.toFixed(2)}</p>
-              <div class="grid grid-cols-2 gap-4 my-5">
-                <div class="bg-black/40 rounded-xl p-3"><span class="text-xs text-gray-400">USDT</span><p class="font-bold text-lg">${(u.balance?.usdt||0).toFixed(2)}</p></div>
-                <div class="bg-black/40 rounded-xl p-3"><span class="text-xs text-gray-400">TRX</span><p class="font-bold text-lg">${(u.balance?.trx||0).toFixed(2)}</p></div>
-              </div>
-              <div class="flex gap-3">
-                <a href="#deposit" onclick="APP.route()" class="flex-1 bg-gradient-gold text-black py-3.5 rounded-xl text-center font-bold shadow-lg">Deposit</a>
-                <a href="#withdraw" onclick="APP.route()" class="flex-1 border border-gold-500/30 text-gold-400 py-3.5 rounded-xl text-center font-semibold">Withdraw</a>
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-3">
-              <div class="glass-panel rounded-2xl p-4 flex items-center gap-3 cursor-pointer" onclick="window.location.hash='spin';APP.route()">
-                <div class="w-10 h-10 rounded-full bg-gradient-gold flex items-center justify-center"><span class="text-lg">🎰</span></div>
-                <div><p class="text-xs text-gray-400">Lucky Spin</p><p class="font-bold">${u.spinAvailable||0} spins</p></div>
-              </div>
-              <div class="glass-panel rounded-2xl p-4 flex items-center gap-3 cursor-pointer" id="btn-checkin">
-                <div class="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center"><span class="text-lg">🎁</span></div>
-                <div><p class="text-xs text-gray-400">Daily Bonus</p><p class="font-bold text-gold-400">+0.1 USDT</p></div>
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-3 gap-3">
-              <div class="glass-panel rounded-2xl p-4 text-center cursor-pointer" onclick="window.location.hash='plans';APP.route()">
-                <span class="text-2xl">💼</span><p class="text-xl font-bold mt-1">${activePlans}</p><p class="text-[10px] text-gray-400">Active Plans</p>
-              </div>
-              <div class="glass-panel rounded-2xl p-4 text-center cursor-pointer" onclick="window.location.hash='referral';APP.route()">
-                <span class="text-2xl">👥</span><p class="text-xl font-bold mt-1">${u.referrals?.l1Count||0}</p><p class="text-[10px] text-gray-400">Team</p>
-              </div>
-              <div class="glass-panel rounded-2xl p-4 text-center cursor-pointer" onclick="window.location.hash='mining';APP.route()">
-                <span class="text-2xl">⛏️</span><p class="text-xl font-bold mt-1">${u.miningPower||0}</p><p class="text-[10px] text-gray-400">Hash Power</p>
-              </div>
-            </div>
-            
-            <div class="glass-panel rounded-2xl p-4">
-              <h3 class="font-semibold text-sm mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Live Activity</h3>
-              <div class="text-xs text-gray-400 space-y-2" id="live-feed"><p>Loading...</p></div>
-            </div>
-          </div>
-        </div>`;
+        return `<div class="pb-4"><header class="px-5 pt-8 pb-4 flex justify-between items-center sticky top-0 bg-[#0a0a0a]/90 backdrop-blur-xl z-40"><div class="flex items-center gap-3 cursor-pointer" onclick="window.location.hash='profile';APP.route()"><img src="${u.avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}" class="w-11 h-11 rounded-full border-2 border-gold-500/60 shadow-md object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'"><div><h1 class="font-serif font-bold text-lg">Hi, ${safeUsername}</h1><p class="text-xs text-gold-400">${u.vipLevel > 0 ? '👑 VIP ' + u.vipLevel : '✦ Explorer'}</p></div></div><div class="flex gap-2"><button onclick="APP.openModal(APP.renderNotifications())" class="w-10 h-10 glass-panel rounded-full flex items-center justify-center relative"><i data-lucide="bell" class="w-5 h-5"></i>${unread ? '<span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>' : ''}</button></div></header><div class="px-5 mt-2 space-y-5">${!u.hasMadeFirstDeposit ? `<div class="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center"><p class="text-blue-400 font-bold">💡 Make your first deposit!</p><p class="text-xs text-blue-300 mt-1">Min 50 USDT - Required for AI Copy Trading</p></div>` : !depositApproved ? `<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 text-center"><p class="text-yellow-400 font-bold">⏳ Deposit pending approval!</p></div>` : bonusRemaining > 0 && !u.depositBonusClaimed ? `<div class="deposit-bonus-banner"><p class="text-lg">🎉 5 USDT FIRST DEPOSIT BONUS!</p><p class="text-sm mt-1">Only ${bonusRemaining} left!</p><button onclick="APP.claimDepositBonus()" class="mt-2 bg-black/30 text-white px-4 py-2 rounded-lg font-bold text-sm">Claim 5 USDT 🚀</button></div>` : ''}<div class="rounded-3xl bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] p-6 border border-gold-500/15 shadow-xl animate-fadeInUp"><span class="text-xs text-gray-400 uppercase tracking-wider">Portfolio Value</span><p class="text-4xl font-serif font-bold mt-1">$${totalValue.toFixed(2)}</p><div class="grid grid-cols-2 gap-4 my-5"><div class="bg-black/40 rounded-xl p-3"><span class="text-xs text-gray-400">USDT</span><p class="font-bold text-lg">${(u.balance?.usdt||0).toFixed(2)}</p></div><div class="bg-black/40 rounded-xl p-3"><span class="text-xs text-gray-400">TRX</span><p class="font-bold text-lg">${(u.balance?.trx||0).toFixed(2)}</p></div></div><div class="flex gap-3"><a href="#deposit" onclick="APP.route()" class="flex-1 bg-gradient-gold text-black py-3.5 rounded-xl text-center font-bold shadow-lg">Deposit</a><a href="#withdraw" onclick="APP.route()" class="flex-1 border border-gold-500/30 text-gold-400 py-3.5 rounded-xl text-center font-semibold">Withdraw</a></div></div><div class="grid grid-cols-2 gap-3"><div class="glass-panel rounded-2xl p-4 flex items-center gap-3 cursor-pointer" onclick="window.location.hash='spin';APP.route()"><div class="w-10 h-10 rounded-full bg-gradient-gold flex items-center justify-center"><span class="text-lg">🎰</span></div><div><p class="text-xs text-gray-400">Lucky Spin</p><p class="font-bold">${u.spinAvailable||0} spins</p></div></div><div class="glass-panel rounded-2xl p-4 flex items-center gap-3 cursor-pointer" id="btn-checkin"><div class="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center"><span class="text-lg">🎁</span></div><div><p class="text-xs text-gray-400">Daily Bonus</p><p class="font-bold text-gold-400">+0.1 USDT</p></div></div></div><div class="grid grid-cols-3 gap-3"><div class="glass-panel rounded-2xl p-4 text-center cursor-pointer" onclick="window.location.hash='plans';APP.route()"><span class="text-2xl">💼</span><p class="text-xl font-bold mt-1">${activePlans}</p><p class="text-[10px] text-gray-400">Active Plans</p></div><div class="glass-panel rounded-2xl p-4 text-center cursor-pointer" onclick="window.location.hash='referral';APP.route()"><span class="text-2xl">👥</span><p class="text-xl font-bold mt-1">${u.referrals?.l1Count||0}</p><p class="text-[10px] text-gray-400">Team</p></div><div class="glass-panel rounded-2xl p-4 text-center cursor-pointer" onclick="window.location.hash='copy-trading';APP.route()"><span class="text-2xl">🤖</span><p class="text-xl font-bold mt-1">${2 - (u.copyTradeCount||0)}</p><p class="text-[10px] text-gray-400">AI Trades Left</p></div></div><div class="glass-panel rounded-2xl p-4"><h3 class="font-semibold text-sm mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Live AI Activity</h3><div class="text-xs text-gray-400 space-y-2" id="live-feed"><p>Loading...</p></div></div></div></div>`;
       },
       
       renderVIP() {
         const u = this.currentUserData || {};
-        const tiers = [
-          { lvl:1, name:'Bronze', roi:2.1, min:50, max:299, lock:30, icon:'🥉' },
-          { lvl:2, name:'Silver', roi:2.5, min:300, max:999, lock:30, icon:'🥈' },
-          { lvl:3, name:'Gold', roi:3.0, min:1000, max:2999, lock:45, icon:'🥇' },
-          { lvl:4, name:'Platinum', roi:3.5, min:3000, max:9999, lock:60, icon:'💎' },
-          { lvl:5, name:'Diamond', roi:4.0, min:10000, max:99999, lock:90, icon:'👑' }
-        ];
+        const tiers = [ { lvl:1, name:'Bronze', roi:2.1, min:50, max:299, lock:30, icon:'🥉' }, { lvl:2, name:'Silver', roi:2.5, min:300, max:999, lock:30, icon:'🥈' }, { lvl:3, name:'Gold', roi:3.0, min:1000, max:2999, lock:45, icon:'🥇' }, { lvl:4, name:'Platinum', roi:3.5, min:3000, max:9999, lock:60, icon:'💎' }, { lvl:5, name:'Diamond', roi:4.0, min:10000, max:99999, lock:90, icon:'👑' } ];
         const balance = u.balance?.usdt || 0;
-        
-        return `
-        <div class="p-5 animate-fadeInUp">
-          <h1 class="text-2xl font-serif font-bold mb-1">VIP Plans</h1>
-          <p class="text-sm text-gray-400 mb-5">Balance: <span class="text-gold-400 font-bold">${balance.toFixed(2)} USDT</span></p>
-          ${balance < 50 ? `<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-4 text-center"><p class="text-yellow-400 font-bold">⚠️ Minimum 50 USDT required</p></div>` : ''}
-          <div class="space-y-4">
-            ${tiers.map(t => {
-              const owned = u.vipLevel >= t.lvl;
-              const canBuy = balance >= 50;
-              const daily = (t.min * t.roi / 100).toFixed(2);
-              return `<div class="glass-panel rounded-2xl overflow-hidden border ${owned?'border-green-500/30':'border-white/8'}">
-                ${owned?'<div class="bg-green-500/15 text-green-400 text-xs font-bold px-4 py-1.5 text-center">✅ ACTIVE</div>':''}
-                <div class="p-5">
-                  <div class="flex justify-between items-start mb-3"><div><h3 class="text-xl font-bold">${t.icon} ${t.name} <span class="text-sm text-gray-400">VIP ${t.lvl}</span></h3></div><p class="text-3xl font-bold text-gold-400">${t.roi}% <span class="text-sm text-gray-400">Daily</span></p></div>
-                  <div class="bg-black/30 rounded-xl p-3 mb-3 text-sm">
-                    <div class="flex justify-between"><span class="text-gray-400">Range</span><span>${t.min}-${t.max} USDT</span></div>
-                    <div class="flex justify-between mt-1"><span class="text-gray-400">Daily</span><span class="text-green-400 font-bold">${daily} USDT</span></div>
-                  </div>
-                  ${owned?'<button class="w-full bg-green-500/10 text-green-400 py-3 rounded-xl font-bold cursor-not-allowed">Active</button>':
-                  `<button class="vip-buy-btn w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold ripple" data-lvl="${t.lvl}" data-name="${t.name}" data-roi="${t.roi}" data-lock="${t.lock}" ${!canBuy?'disabled style="opacity:0.5"':''}>${canBuy?'💰 Select Plan':'❌ Need 50+ USDT'}</button>`}
-                </div></div>`;
-            }).join('')}
-          </div>
-        </div>`;
+        return `<div class="p-5 animate-fadeInUp"><h1 class="text-2xl font-serif font-bold mb-1">VIP Plans</h1><p class="text-sm text-gray-400 mb-5">Balance: <span class="text-gold-400 font-bold">${balance.toFixed(2)} USDT</span></p>${balance < 50 ? `<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-4 text-center"><p class="text-yellow-400 font-bold">⚠️ Minimum 50 USDT required</p></div>` : ''}<div class="space-y-4">${tiers.map(t => { const owned = u.vipLevel >= t.lvl; const canBuy = balance >= 50; const daily = (t.min * t.roi / 100).toFixed(2); return `<div class="glass-panel rounded-2xl overflow-hidden border ${owned?'border-green-500/30':'border-white/8'}">${owned?'<div class="bg-green-500/15 text-green-400 text-xs font-bold px-4 py-1.5 text-center">✅ ACTIVE</div>':''}<div class="p-5"><div class="flex justify-between items-start mb-3"><div><h3 class="text-xl font-bold">${t.icon} ${t.name} <span class="text-sm text-gray-400">VIP ${t.lvl}</span></h3></div><p class="text-3xl font-bold text-gold-400">${t.roi}% <span class="text-sm text-gray-400">Daily</span></p></div><div class="bg-black/30 rounded-xl p-3 mb-3 text-sm"><div class="flex justify-between"><span class="text-gray-400">Range</span><span>${t.min}-${t.max} USDT</span></div><div class="flex justify-between mt-1"><span class="text-gray-400">Daily</span><span class="text-green-400 font-bold">${daily} USDT</span></div></div>${owned?'<button class="w-full bg-green-500/10 text-green-400 py-3 rounded-xl font-bold cursor-not-allowed">Active</button>':`<button class="vip-buy-btn w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold ripple" data-lvl="${t.lvl}" data-name="${t.name}" data-roi="${t.roi}" data-lock="${t.lock}" ${!canBuy?'disabled style="opacity:0.5"':''}>${canBuy?'💰 Select Plan':'❌ Need 50+ USDT'}</button>`}</div></div>`; }).join('')}</div></div>`;
       },
       
       renderDeposit() {
-        return `
-        <div class="p-5 animate-fadeInUp">
-          <h1 class="text-2xl font-serif font-bold mb-2">Deposit USDT</h1>
-          <p class="text-sm text-gray-400 mb-5">Min: <span class="text-gold-400 font-bold">50 USDT</span> (TRC20)</p>
-          <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-4 text-center">
-            <p class="text-yellow-400 font-bold text-sm">⚠️ IMPORTANT</p>
-            <p class="text-xs text-yellow-300 mt-1">Deposits require admin approval. No bonus until approved.</p>
-          </div>
-          <div class="glass-panel p-5 text-center mb-4">
-            <p class="text-xs text-gray-400 mb-2">Send USDT (TRC20) to:</p>
-            <div class="bg-black/50 p-3 rounded-xl my-3 border border-gold-500/15"><p class="font-mono text-gold-400 break-all text-xs">${this._depositAddress}</p></div>
-            <button onclick="navigator.clipboard.writeText('${this._depositAddress}');showToast('✅ Copied!','success')" class="bg-gold-500/15 text-gold-400 px-5 py-2 rounded-xl font-bold text-sm">📋 Copy</button>
-          </div>
-          <div class="glass-panel p-5">
-            <h3 class="font-bold text-sm mb-4">Submit Deposit</h3>
-            <div class="space-y-3">
-              <div><label class="text-xs text-gray-400 block mb-1">Amount (USDT)</label><input id="dep-amount" type="number" step="0.01" min="50" placeholder="Min 50 USDT" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div>
-              <div><label class="text-xs text-gray-400 block mb-1">TXID</label><input id="dep-tx" placeholder="Paste blockchain TXID" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div>
-              <button id="submit-deposit-btn" class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold shadow-lg ripple">${btnHTML('📥 Submit for Approval')}</button>
-            </div>
-            <p class="text-[10px] text-gray-500 mt-3 text-center">No balance added until admin approval</p>
-          </div>
-        </div>`;
+        return `<div class="p-5 animate-fadeInUp"><h1 class="text-2xl font-serif font-bold mb-2">Deposit USDT</h1><p class="text-sm text-gray-400 mb-5">Min: <span class="text-gold-400 font-bold">50 USDT</span> (TRC20)</p><div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-4 text-center"><p class="text-yellow-400 font-bold text-sm">⚠️ IMPORTANT</p><p class="text-xs text-yellow-300 mt-1">Deposits require admin approval. No bonus until approved.</p></div><div class="glass-panel p-5 text-center mb-4"><p class="text-xs text-gray-400 mb-2">Send USDT (TRC20) to:</p><div class="bg-black/50 p-3 rounded-xl my-3 border border-gold-500/15"><p class="font-mono text-gold-400 break-all text-xs">${this._depositAddress}</p></div><button onclick="navigator.clipboard.writeText('${this._depositAddress}');showToast('✅ Copied!','success')" class="bg-gold-500/15 text-gold-400 px-5 py-2 rounded-xl font-bold text-sm">📋 Copy</button></div><div class="glass-panel p-5"><h3 class="font-bold text-sm mb-4">Submit Deposit</h3><div class="space-y-3"><div><label class="text-xs text-gray-400 block mb-1">Amount (USDT)</label><input id="dep-amount" type="number" step="0.01" min="50" placeholder="Min 50 USDT" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div><div><label class="text-xs text-gray-400 block mb-1">TXID</label><input id="dep-tx" placeholder="Paste blockchain TXID" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div><button id="submit-deposit-btn" class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold shadow-lg ripple">${btnHTML('📥 Submit for Approval')}</button></div><p class="text-[10px] text-gray-500 mt-3 text-center">No balance added until admin approval</p></div></div>`;
       },
       
       renderWithdraw() {
-        const u = this.currentUserData || {};
-        const hasWallet = !!u.walletAddress;
-        
-        return `
-        <div class="p-5 animate-fadeInUp">
-          <h1 class="text-2xl font-serif font-bold mb-2">Withdraw</h1>
-          <p class="text-sm text-gray-400 mb-5">Available: <span class="text-gold-400 font-bold">${(u.balance?.usdt||0).toFixed(2)} USDT</span></p>
-          ${!hasWallet ? `
-          <div class="glass-panel p-5 mb-4 text-center"><p class="text-yellow-400 mb-2">⚠️ No wallet address set!</p>
-          <button onclick="APP.setWalletAddress()" class="bg-gradient-gold text-black px-6 py-3 rounded-xl font-bold">Set Wallet</button></div>` : `
-          <div class="glass-panel p-5">
-            <p class="text-xs text-gray-400 mb-3">To: <span class="font-mono text-gold-400 text-xs">${u.walletAddress.substring(0,8)}...${u.walletAddress.substring(u.walletAddress.length-8)}</span></p>
-            <div class="space-y-3">
-              <div><label class="text-xs text-gray-400 block mb-1">Amount (USDT)</label><input id="w-amount" type="number" step="0.01" min="10" placeholder="Min 10 USDT" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div>
-              <div><label class="text-xs text-gray-400 block mb-1">Security PIN</label><input id="w-pin" type="password" maxlength="6" placeholder="6 digits" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div>
-              ${u.twoFactorEnabled?'<div><label class="text-xs text-gray-400 block mb-1">2FA Code</label><input id="w-2fa" type="text" maxlength="6" placeholder="000000" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div>':''}
-              <button id="withdraw-submit-btn" class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold ripple">${btnHTML('📤 Request Withdrawal')}</button>
-            </div>
-            <p class="text-[10px] text-gray-500 mt-3">Fee: 1% · Pending admin approval</p>
-          </div>`}
-        </div>`;
+        const u = this.currentUserData || {}; const hasWallet = !!u.walletAddress;
+        return `<div class="p-5 animate-fadeInUp"><h1 class="text-2xl font-serif font-bold mb-2">Withdraw</h1><p class="text-sm text-gray-400 mb-5">Available: <span class="text-gold-400 font-bold">${(u.balance?.usdt||0).toFixed(2)} USDT</span></p>${!hasWallet ? `<div class="glass-panel p-5 mb-4 text-center"><p class="text-yellow-400 mb-2">⚠️ No wallet address set!</p><button onclick="APP.setWalletAddress()" class="bg-gradient-gold text-black px-6 py-3 rounded-xl font-bold">Set Wallet</button></div>` : `<div class="glass-panel p-5"><p class="text-xs text-gray-400 mb-3">To: <span class="font-mono text-gold-400 text-xs">${u.walletAddress.substring(0,8)}...${u.walletAddress.substring(u.walletAddress.length-8)}</span></p><div class="space-y-3"><div><label class="text-xs text-gray-400 block mb-1">Amount (USDT)</label><input id="w-amount" type="number" step="0.01" min="10" placeholder="Min 10 USDT" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div><div><label class="text-xs text-gray-400 block mb-1">Security PIN</label><input id="w-pin" type="password" maxlength="6" placeholder="6 digits" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div>${u.twoFactorEnabled?'<div><label class="text-xs text-gray-400 block mb-1">2FA Code</label><input id="w-2fa" type="text" maxlength="6" placeholder="000000" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-gold-500/50"></div>':''}<button id="withdraw-submit-btn" class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold ripple">${btnHTML('📤 Request Withdrawal')}</button></div><p class="text-[10px] text-gray-500 mt-3">Fee: 1% · Pending admin approval</p></div>`}</div>`;
       },
       
-      renderHistory() {
-        const txs = this.currentUserData?.transactions || [];
-        return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">History</h1><div class="space-y-2">${txs.length ? txs.map(t => this.txItem(t)).join('') : '<p class="text-gray-500 text-center py-12">No transactions</p>'}</div></div>`;
-      },
-      
-      txItem(t) {
-        const pos = ['deposit','profit','spin_win','checkin','referral_bonus','referral_commission','referral_task','mining','deposit_bonus'].includes(t.type);
-        const icons = { deposit:'⬇️', withdraw:'⬆️', profit:'📈', investment:'💎', spin_win:'🎰', checkin:'🎁', referral_bonus:'🤝', referral_commission:'💸', referral_task:'🏆', mining:'⛏️', deposit_bonus:'💰' };
-        const sc = t.status==='pending'?'bg-yellow-500/15 text-yellow-400':'bg-green-500/15 text-green-400';
-        return `<div class="flex items-center gap-3 bg-[#111] rounded-xl p-4 border border-white/5">
-          <div class="w-10 h-10 rounded-full ${pos?'bg-green-500/10':'bg-red-500/10'} flex items-center justify-center text-lg">${icons[t.type]||'📋'}</div>
-          <div class="flex-1"><div class="flex justify-between"><p class="font-semibold text-sm capitalize">${t.type.replace(/_/g,' ')}</p><p class="font-bold text-sm ${pos?'text-green-400':'text-red-400'}">${pos?'+':'-'}${t.amount.toFixed(2)} USDT</p></div>
-          <div class="flex justify-between mt-1"><p class="text-[11px] text-gray-500">${new Date(t.date).toLocaleDateString()}</p><span class="text-[10px] px-2 py-0.5 rounded-full ${sc}">${t.status}</span></div></div></div>`;
-      },
+      renderHistory() { const txs = this.currentUserData?.transactions || []; return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">History</h1><div class="space-y-2">${txs.length ? txs.map(t => this.txItem(t)).join('') : '<p class="text-gray-500 text-center py-12">No transactions</p>'}</div></div>`; },
+      txItem(t) { const pos = ['deposit','profit','spin_win','checkin','referral_bonus','referral_commission','referral_task','mining','deposit_bonus','copy_trade'].includes(t.type); const icons = { deposit:'⬇️', withdraw:'⬆️', profit:'📈', investment:'💎', spin_win:'🎰', checkin:'🎁', referral_bonus:'🤝', referral_commission:'💸', referral_task:'🏆', mining:'⛏️', deposit_bonus:'💰', copy_trade:'🤖' }; const sc = t.status==='pending'?'bg-yellow-500/15 text-yellow-400':'bg-green-500/15 text-green-400'; return `<div class="flex items-center gap-3 bg-[#111] rounded-xl p-4 border border-white/5"><div class="w-10 h-10 rounded-full ${pos?'bg-green-500/10':'bg-red-500/10'} flex items-center justify-center text-lg">${icons[t.type]||'📋'}</div><div class="flex-1"><div class="flex justify-between"><p class="font-semibold text-sm capitalize">${t.type.replace(/_/g,' ')}</p><p class="font-bold text-sm ${pos?'text-green-400':'text-red-400'}">${pos?'+':'-'}${t.amount.toFixed(2)} USDT</p></div><div class="flex justify-between mt-1"><p class="text-[11px] text-gray-500">${new Date(t.date).toLocaleDateString()}</p><span class="text-[10px] px-2 py-0.5 rounded-full ${sc}">${t.status}</span></div></div></div>`; },
       
       renderProfile() {
-        const u = this.currentUserData || {};
-        const vips = ['','BRONZE','SILVER','GOLD','PLATINUM','DIAMOND'];
-        const safeUsername = this.escapeHTML(u.username||'User');
-        const safeEmail = this.escapeHTML(u.email||'');
-        
-        return `<div class="p-5">
-          <div class="text-center mb-6">
-            <div class="relative inline-block">
-              <img src="${u.avatarUrl||'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}" class="w-24 h-24 rounded-full mx-auto border-[3px] border-gold-500 shadow-xl object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
-              ${u.vipLevel>0?`<div class="absolute -bottom-1 -right-1 bg-gradient-gold text-black text-[10px] font-black px-3 py-1 rounded-full border-2 border-[#0a0a0a]">VIP ${u.vipLevel}</div>`:''}
-            </div>
-            <h2 class="text-xl font-bold mt-3">${safeUsername}</h2>
-            <p class="text-gray-400 text-xs">${safeEmail}</p>
-          </div>
-          <div class="grid grid-cols-3 gap-3 mb-5">
-            <div class="bg-[#111] rounded-xl p-3 text-center"><p class="text-lg font-bold text-gold-400">${(u.balance?.usdt||0).toFixed(2)}</p><p class="text-[10px] text-gray-500">USDT</p></div>
-            <div class="bg-[#111] rounded-xl p-3 text-center"><p class="text-lg font-bold text-green-400">${(u.totalEarned||0).toFixed(2)}</p><p class="text-[10px] text-gray-500">📈 Earned</p></div>
-            <div class="bg-[#111] rounded-xl p-3 text-center"><p class="text-lg font-bold text-blue-400">${u.spinAvailable||0}</p><p class="text-[10px] text-gray-500">🎰 Spins</p></div>
-          </div>
-          <div class="space-y-2">
-            <div id="wallet-btn" class="flex justify-between items-center bg-[#111] p-4 rounded-xl border border-white/5 cursor-pointer"><span>💳 Wallet: ${u.walletAddress?'<span class="text-green-400 text-xs">Set ✅</span>':'<span class="text-yellow-400 text-xs">Not Set ⚠️</span>'}</span><span class="text-gray-500">›</span></div>
-            <div id="2fa-btn" class="flex justify-between items-center bg-[#111] p-4 rounded-xl border border-white/5 cursor-pointer"><span>🔐 2FA: ${u.twoFactorEnabled?'<span class="text-green-400 text-xs">Enabled ✅</span>':'<span class="text-yellow-400 text-xs">Disabled ⚠️</span>'}</span><span class="text-gray-500">›</span></div>
-            <a href="#history" onclick="APP.route()" class="flex justify-between items-center bg-[#111] p-4 rounded-xl"><span>📋 History</span><span class="text-gray-500">›</span></a>
-            <a href="#referral" onclick="APP.route()" class="flex justify-between items-center bg-[#111] p-4 rounded-xl"><span>👥 Referral</span><span class="text-gray-500">›</span></a>
-            <a href="#settings" onclick="APP.route()" class="flex justify-between items-center bg-[#111] p-4 rounded-xl"><span>⚙️ Settings</span><span class="text-gray-500">›</span></a>
-          </div>
-          <button onclick="APP.logout()" class="w-full mt-5 bg-red-500/8 border border-red-500/15 text-red-400 py-4 rounded-xl font-semibold">🚪 Sign Out</button>
-        </div>`;
+        const u = this.currentUserData || {}; const vips = ['','BRONZE','SILVER','GOLD','PLATINUM','DIAMOND'];
+        return `<div class="p-5"><div class="text-center mb-6"><div class="relative inline-block"><img src="${u.avatarUrl||'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'}" class="w-24 h-24 rounded-full mx-auto border-[3px] border-gold-500 shadow-xl object-cover" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">${u.vipLevel>0?`<div class="absolute -bottom-1 -right-1 bg-gradient-gold text-black text-[10px] font-black px-3 py-1 rounded-full border-2 border-[#0a0a0a]">VIP ${u.vipLevel}</div>`:''}</div><h2 class="text-xl font-bold mt-3">${this.escapeHTML(u.username||'User')}</h2><p class="text-gray-400 text-xs">${this.escapeHTML(u.email||'')}</p></div><div class="grid grid-cols-3 gap-3 mb-5"><div class="bg-[#111] rounded-xl p-3 text-center"><p class="text-lg font-bold text-gold-400">${(u.balance?.usdt||0).toFixed(2)}</p><p class="text-[10px] text-gray-500">USDT</p></div><div class="bg-[#111] rounded-xl p-3 text-center"><p class="text-lg font-bold text-green-400">${(u.totalEarned||0).toFixed(2)}</p><p class="text-[10px] text-gray-500">📈 Earned</p></div><div class="bg-[#111] rounded-xl p-3 text-center"><p class="text-lg font-bold text-blue-400">${u.spinAvailable||0}</p><p class="text-[10px] text-gray-500">🎰 Spins</p></div></div><div class="space-y-2"><div id="wallet-btn" class="flex justify-between items-center bg-[#111] p-4 rounded-xl border border-white/5 cursor-pointer"><span>💳 Wallet: ${u.walletAddress?'<span class="text-green-400 text-xs">Set ✅</span>':'<span class="text-yellow-400 text-xs">Not Set ⚠️</span>'}</span><span class="text-gray-500">›</span></div><div id="2fa-btn" class="flex justify-between items-center bg-[#111] p-4 rounded-xl border border-white/5 cursor-pointer"><span>🔐 2FA: ${u.twoFactorEnabled?'<span class="text-green-400 text-xs">Enabled ✅</span>':'<span class="text-yellow-400 text-xs">Disabled ⚠️</span>'}</span><span class="text-gray-500">›</span></div><a href="#history" onclick="APP.route()" class="flex justify-between items-center bg-[#111] p-4 rounded-xl"><span>📋 History</span><span class="text-gray-500">›</span></a><a href="#copy-history" onclick="APP.route()" class="flex justify-between items-center bg-[#111] p-4 rounded-xl"><span>🤖 Copy Trade History</span><span class="text-gray-500">›</span></a><a href="#referral" onclick="APP.route()" class="flex justify-between items-center bg-[#111] p-4 rounded-xl"><span>👥 Referral</span><span class="text-gray-500">›</span></a><a href="#settings" onclick="APP.route()" class="flex justify-between items-center bg-[#111] p-4 rounded-xl"><span>⚙️ Settings</span><span class="text-gray-500">›</span></a></div><button onclick="APP.logout()" class="w-full mt-5 bg-red-500/8 border border-red-500/15 text-red-400 py-4 rounded-xl font-semibold">🚪 Sign Out</button></div>`;
       },
       
-      // ============ REFERRAL PAGE WITH TASKS ============
       renderReferral() {
-        const u = this.currentUserData || {};
-        const code = u.referralCode || 'GOLDXXXX';
-        const link = `${location.origin}${location.pathname}?ref=${code}`;
+        const u = this.currentUserData || {}; const code = u.referralCode || 'GOLDXXXX'; const link = `${location.origin}${location.pathname}?ref=${code}`;
         const refs = u.referrals || { l1Count: 0, l2Count: 0, totalEarnings: 0, members: [], pendingBonus: 0 };
-        const activeDepositCount = this.getActiveDepositCount();
-        const tasks = this.getCompletedTasks();
-        
-        return `<div class="p-5">
-          <h1 class="text-2xl font-serif font-bold mb-5">Referral Program</h1>
-          
-          ${refs.pendingBonus > 0 ? `
-          <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-4 text-center">
-            <p class="text-yellow-400 font-bold">⏳ Pending: ${refs.pendingBonus.toFixed(2)} USDT</p>
-            <p class="text-xs text-yellow-300 mt-1">Released when referrals' deposits are approved!</p>
-          </div>` : ''}
-          
-          <div class="glass-panel p-5 text-center mb-4">
-            <p class="text-xs text-gray-400">Your Referral Code</p>
-            <p class="text-2xl font-bold text-gold-400">${code}</p>
-            <div class="bg-black/40 p-3 rounded-xl my-3 border border-gold-500/10"><p class="text-xs text-gold-400 break-all">${link}</p></div>
-            <button id="copy-ref-link" class="bg-gold-500/15 text-gold-400 px-6 py-2.5 rounded-xl font-bold text-sm">📋 Copy Link</button>
-          </div>
-          
-          <!-- Referral Tasks Section -->
-          <div class="glass-panel p-5 mb-4">
-            <h3 class="font-bold text-sm mb-1">🏆 Referral Tasks</h3>
-            <p class="text-xs text-gray-400 mb-4">Active Deposits: <span class="text-gold-400 font-bold">${activeDepositCount}</span></p>
-            
-            <div class="space-y-3">
-              ${tasks.map(task => {
-                const claimed = task.claimed;
-                const completed = task.completed;
-                
-                return `<div class="bg-black/30 rounded-xl p-4 border ${claimed ? 'border-green-500/30' : completed ? 'border-gold-500/30' : 'border-white/5'}">
-                  <div class="flex justify-between items-center mb-2">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xl">${task.icon}</span>
-                      <div>
-                        <p class="font-bold text-sm">${task.label}</p>
-                        <p class="text-xs text-gray-400">Reward: <span class="text-gold-400 font-bold">${task.reward} USDT</span></p>
-                      </div>
-                    </div>
-                    ${claimed ? '<span class="text-[10px] bg-green-500/15 text-green-400 px-2 py-1 rounded-full">✅ Claimed</span>' : 
-                      completed ? '<span class="text-[10px] bg-gold-500/15 text-gold-400 px-2 py-1 rounded-full">Ready!</span>' : 
-                      '<span class="text-[10px] bg-gray-500/15 text-gray-400 px-2 py-1 rounded-full">🔒</span>'}
-                  </div>
-                  
-                  <div class="bg-black/40 rounded-full h-2 mb-2">
-                    <div class="bg-gradient-gold h-full rounded-full transition-all" style="width:${task.progress}%"></div>
-                  </div>
-                  
-                  <div class="flex justify-between text-[10px] text-gray-500 mb-2">
-                    <span>Progress: ${Math.min(activeDepositCount, task.required)}/${task.required}</span>
-                    ${!completed ? `<span>Need ${task.remaining} more</span>` : ''}
-                  </div>
-                  
-                  ${completed && !claimed ? `
-                  <button onclick="APP.claimReferralTask(${task.required})" class="w-full bg-gradient-gold text-black py-2.5 rounded-lg font-bold text-sm ripple">
-                    🎉 Claim ${task.reward} USDT
-                  </button>` : claimed ? `
-                  <button class="w-full bg-green-500/10 text-green-400 py-2.5 rounded-lg font-bold text-sm cursor-not-allowed" disabled>
-                    ✅ ${task.reward} USDT Claimed
-                  </button>` : `
-                  <button class="w-full bg-gray-500/10 text-gray-400 py-2.5 rounded-lg font-bold text-sm cursor-not-allowed" disabled>
-                    🔒 Complete ${task.required} Active Deposits
-                  </button>`}
-                </div>`;
-              }).join('')}
-            </div>
-          </div>
-          
-          <!-- Team Stats -->
-          <div class="glass-panel p-5 mb-4">
-            <h3 class="font-bold text-sm mb-3">Team Stats</h3>
-            <div class="grid grid-cols-3 gap-2 text-center mb-4">
-              <div class="bg-black/30 p-3 rounded-xl"><p class="text-xl font-bold text-gold-400">${refs.l1Count}</p><p class="text-[10px] text-gray-400">L1</p></div>
-              <div class="bg-black/30 p-3 rounded-xl"><p class="text-xl font-bold text-gold-400">${refs.l2Count}</p><p class="text-[10px] text-gray-400">L2</p></div>
-              <div class="bg-black/30 p-3 rounded-xl"><p class="text-xl font-bold text-green-400">$${(refs.totalEarnings||0).toFixed(2)}</p><p class="text-[10px] text-gray-400">Earned</p></div>
-            </div>
-            ${refs.members.length ? `<h4 class="text-xs font-semibold mb-2">Members (${refs.members.length})</h4>
-            <div class="space-y-2">${refs.members.map(m => `<div class="flex justify-between items-center bg-black/20 p-3 rounded-xl">
-              <div><p class="text-sm font-semibold">${this.escapeHTML(m.username||m.email||'Unknown')}</p><p class="text-[10px] text-gray-500">${new Date(m.joinDate).toLocaleDateString()}</p></div>
-              <div class="flex gap-2 items-center"><span class="text-[10px] bg-gold-500/15 text-gold-400 px-2 py-1 rounded-full">L${m.level}</span>${m.depositApproved?'<span class="text-[10px] text-green-400">✅</span>':m.depositMade?'<span class="text-[10px] text-yellow-400">⏳</span>':'<span class="text-[10px] text-gray-400">🆕</span>'}</div>
-            </div>`).join('')}</div>` : '<p class="text-gray-500 text-xs text-center">No members yet</p>'}
-          </div>
-        </div>`;
+        const activeDepositCount = this.getActiveDepositCount(); const tasks = this.getCompletedTasks();
+        return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">Referral Program</h1>${refs.pendingBonus > 0 ? `<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-4 text-center"><p class="text-yellow-400 font-bold">⏳ Pending: ${refs.pendingBonus.toFixed(2)} USDT</p><p class="text-xs text-yellow-300 mt-1">Released when referrals' deposits are approved!</p></div>` : ''}<div class="glass-panel p-5 text-center mb-4"><p class="text-xs text-gray-400">Your Referral Code</p><p class="text-2xl font-bold text-gold-400">${code}</p><div class="bg-black/40 p-3 rounded-xl my-3 border border-gold-500/10"><p class="text-xs text-gold-400 break-all">${link}</p></div><button id="copy-ref-link" class="bg-gold-500/15 text-gold-400 px-6 py-2.5 rounded-xl font-bold text-sm">📋 Copy Link</button></div><div class="glass-panel p-5 mb-4"><h3 class="font-bold text-sm mb-1">🏆 Referral Tasks</h3><p class="text-xs text-gray-400 mb-4">Active Deposits: <span class="text-gold-400 font-bold">${activeDepositCount}</span></p><div class="space-y-3">${tasks.map(task => { const claimed = task.claimed; const completed = task.completed; return `<div class="bg-black/30 rounded-xl p-4 border ${claimed ? 'border-green-500/30' : completed ? 'border-gold-500/30' : 'border-white/5'}"><div class="flex justify-between items-center mb-2"><div class="flex items-center gap-2"><span class="text-xl">${task.icon}</span><div><p class="font-bold text-sm">${task.label}</p><p class="text-xs text-gray-400">Reward: <span class="text-gold-400 font-bold">${task.reward} USDT</span></p></div></div>${claimed ? '<span class="text-[10px] bg-green-500/15 text-green-400 px-2 py-1 rounded-full">✅ Claimed</span>' : completed ? '<span class="text-[10px] bg-gold-500/15 text-gold-400 px-2 py-1 rounded-full">Ready!</span>' : '<span class="text-[10px] bg-gray-500/15 text-gray-400 px-2 py-1 rounded-full">🔒</span>'}</div><div class="bg-black/40 rounded-full h-2 mb-2"><div class="bg-gradient-gold h-full rounded-full transition-all" style="width:${task.progress}%"></div></div><div class="flex justify-between text-[10px] text-gray-500 mb-2"><span>Progress: ${Math.min(activeDepositCount, task.required)}/${task.required}</span>${!completed ? `<span>Need ${task.remaining} more</span>` : ''}</div>${completed && !claimed ? `<button onclick="APP.claimReferralTask(${task.required})" class="w-full bg-gradient-gold text-black py-2.5 rounded-lg font-bold text-sm ripple">🎉 Claim ${task.reward} USDT</button>` : claimed ? `<button class="w-full bg-green-500/10 text-green-400 py-2.5 rounded-lg font-bold text-sm cursor-not-allowed" disabled>✅ ${task.reward} USDT Claimed</button>` : `<button class="w-full bg-gray-500/10 text-gray-400 py-2.5 rounded-lg font-bold text-sm cursor-not-allowed" disabled>🔒 Complete ${task.required} Active Deposits</button>`}</div>`; }).join('')}</div></div><div class="glass-panel p-5 mb-4"><h3 class="font-bold text-sm mb-3">Team Stats</h3><div class="grid grid-cols-3 gap-2 text-center mb-4"><div class="bg-black/30 p-3 rounded-xl"><p class="text-xl font-bold text-gold-400">${refs.l1Count}</p><p class="text-[10px] text-gray-400">L1</p></div><div class="bg-black/30 p-3 rounded-xl"><p class="text-xl font-bold text-gold-400">${refs.l2Count}</p><p class="text-[10px] text-gray-400">L2</p></div><div class="bg-black/30 p-3 rounded-xl"><p class="text-xl font-bold text-green-400">$${(refs.totalEarnings||0).toFixed(2)}</p><p class="text-[10px] text-gray-400">Earned</p></div></div>${refs.members.length ? `<h4 class="text-xs font-semibold mb-2">Members (${refs.members.length})</h4><div class="space-y-2">${refs.members.map(m => `<div class="flex justify-between items-center bg-black/20 p-3 rounded-xl"><div><p class="text-sm font-semibold">${this.escapeHTML(m.username||m.email||'Unknown')}</p><p class="text-[10px] text-gray-500">${new Date(m.joinDate).toLocaleDateString()}</p></div><div class="flex gap-2 items-center"><span class="text-[10px] bg-gold-500/15 text-gold-400 px-2 py-1 rounded-full">L${m.level}</span>${m.depositApproved?'<span class="text-[10px] text-green-400">✅</span>':m.depositMade?'<span class="text-[10px] text-yellow-400">⏳</span>':'<span class="text-[10px] text-gray-400">🆕</span>'}</div></div>`).join('')}</div>` : '<p class="text-gray-500 text-xs text-center">No members yet</p>'}</div></div>`;
       },
       
       renderSpin() {
         const spins = this.currentUserData?.spinAvailable || 0;
-        const segs = [
-          { label:'1000', color:'#FF4757', prize:1000 }, { label:'500', color:'#2ED573', prize:500 },
-          { label:'2', color:'#FFA502', prize:2 }, { label:'100', color:'#3742FA', prize:100 },
-          { label:'2', color:'#FF6348', prize:2 }, { label:'50', color:'#1E90FF', prize:50 },
-          { label:'2', color:'#FF69B4', prize:2 }, { label:'10', color:'#2BCBBA', prize:10 }
-        ];
+        const segs = [ { label:'1000', color:'#FF4757', prize:1000 }, { label:'500', color:'#2ED573', prize:500 }, { label:'2', color:'#FFA502', prize:2 }, { label:'100', color:'#3742FA', prize:100 }, { label:'2', color:'#FF6348', prize:2 }, { label:'50', color:'#1E90FF', prize:50 }, { label:'2', color:'#FF69B4', prize:2 }, { label:'10', color:'#2BCBBA', prize:10 } ];
         const angle = 360 / segs.length;
-        
-        return `<div class="p-5 text-center">
-          <h1 class="text-2xl font-serif font-bold mb-2">🎰 Lucky Spin</h1>
-          <div class="spin-wheel-container mb-5">
-            <div class="spin-pointer"></div>
-            <div class="spin-wheel spin-wheel-glow" id="spin-wheel" style="transform:rotate(0deg);">
-              ${segs.map((s,i) => `<div class="wheel-segment" style="transform:rotate(${i*angle}deg);background:${s.color};"><div class="wheel-segment-content">${s.label} USDT</div></div>`).join('')}
-              <div class="spin-center" id="spin-center-btn"><span class="spin-center-text">SPIN</span></div>
-            </div>
-          </div>
-          <div class="glass-panel inline-block px-5 py-3 mb-4"><p>Spins: <span class="font-bold text-gold-400 text-2xl" id="spin-count">${spins}</span></p></div>
-          <button id="spin-btn" ${spins<1?'disabled':''} class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold text-lg ripple ${spins<1?'opacity-40':''}">${spins>0?'🎰 SPIN NOW':'😔 No Spins'}</button>
-        </div>`;
+        return `<div class="p-5 text-center"><h1 class="text-2xl font-serif font-bold mb-2">🎰 Lucky Spin</h1><div class="spin-wheel-container mb-5"><div class="spin-pointer"></div><div class="spin-wheel spin-wheel-glow" id="spin-wheel" style="transform:rotate(0deg);">${segs.map((s,i) => `<div class="wheel-segment" style="transform:rotate(${i*angle}deg);background:${s.color};"><div class="wheel-segment-content">${s.label} USDT</div></div>`).join('')}<div class="spin-center" id="spin-center-btn"><span class="spin-center-text">SPIN</span></div></div></div><div class="glass-panel inline-block px-5 py-3 mb-4"><p>Spins: <span class="font-bold text-gold-400 text-2xl" id="spin-count">${spins}</span></p></div><button id="spin-btn" ${spins<1?'disabled':''} class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold text-lg ripple ${spins<1?'opacity-40':''}">${spins>0?'🎰 SPIN NOW':'😔 No Spins'}</button></div>`;
       },
       
       renderMining() {
-        const u = this.currentUserData || {};
-        const hp = u.miningPower || 0;
-        const daily = hp * 0.005, hourly = daily / 24;
-        const last = u.lastMiningClaim ? new Date(u.lastMiningClaim) : null;
-        const now = new Date();
+        const u = this.currentUserData || {}; const hp = u.miningPower || 0; const daily = hp * 0.005, hourly = daily / 24;
+        const last = u.lastMiningClaim ? new Date(u.lastMiningClaim) : null; const now = new Date();
         let claimable = 0, can = false, nextClaimSeconds = 0;
-        
-        if (last) {
-          const h = (now - last) / 3600000;
-          if (h >= 1) { can = true; claimable = Math.min(h, 24) * hourly; }
-          else nextClaimSeconds = Math.ceil(3600 - ((now - last) / 1000));
-        } else if (hp > 0) { can = true; claimable = hourly; }
-        
-        return `<div class="p-5">
-          <h1 class="text-2xl font-serif font-bold mb-2">⛏ Mining</h1>
-          <div class="glass-panel p-6 text-center mb-4">
-            <span class="text-5xl">⛏️</span><p class="text-3xl font-bold text-gold-400 mt-2">${hp}</p>
-            <p class="text-xs text-gray-400">${daily.toFixed(4)} USDT/day</p>
-          </div>
-          <div class="glass-panel p-5">
-            <div class="flex justify-between mb-2"><span class="text-gray-400">Claimable</span><span class="font-bold text-green-400">${claimable.toFixed(4)} USDT</span></div>
-            ${!can && nextClaimSeconds>0?`<div class="bg-black/30 rounded-lg p-3 mb-3 text-center"><p class="text-xs text-gray-400">⏳ Next claim in:</p><p class="text-lg font-bold text-gold-400" id="mining-countdown">${Math.floor(nextClaimSeconds/60)}m ${nextClaimSeconds%60}s</p></div>`:''}
-            <button id="claim-mining-btn" ${!can?'disabled':''} class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold mt-3 ${!can?'opacity-50':''}">${can?`💰 Claim ${claimable.toFixed(4)} USDT`:'⏳ Mining...'}</button>
-          </div>
-        </div>`;
+        if (last) { const h = (now - last) / 3600000; if (h >= 1) { can = true; claimable = Math.min(h, 24) * hourly; } else nextClaimSeconds = Math.ceil(3600 - ((now - last) / 1000)); }
+        else if (hp > 0) { can = true; claimable = hourly; }
+        return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-2">⛏ Mining</h1><div class="glass-panel p-6 text-center mb-4"><span class="text-5xl">⛏️</span><p class="text-3xl font-bold text-gold-400 mt-2">${hp}</p><p class="text-xs text-gray-400">${daily.toFixed(4)} USDT/day</p></div><div class="glass-panel p-5"><div class="flex justify-between mb-2"><span class="text-gray-400">Claimable</span><span class="font-bold text-green-400">${claimable.toFixed(4)} USDT</span></div>${!can && nextClaimSeconds>0?`<div class="bg-black/30 rounded-lg p-3 mb-3 text-center"><p class="text-xs text-gray-400">⏳ Next claim in:</p><p class="text-lg font-bold text-gold-400" id="mining-countdown">${Math.floor(nextClaimSeconds/60)}m ${nextClaimSeconds%60}s</p></div>`:''}<button id="claim-mining-btn" ${!can?'disabled':''} class="w-full bg-gradient-gold text-black py-4 rounded-xl font-bold mt-3 ${!can?'opacity-50':''}">${can?`💰 Claim ${claimable.toFixed(4)} USDT`:'⏳ Mining...'}</button></div></div>`;
       },
       
-      renderPlans() {
-        const active = (this.currentUserData?.plans || []).filter(p => p.status === 'active');
-        return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">My Plans</h1>${active.length ? active.map(p => this.planCard(p)).join('') : '<p class="text-gray-500 text-center py-12">No active plans</p>'}</div>`;
-      },
+      renderPlans() { const active = (this.currentUserData?.plans || []).filter(p => p.status === 'active'); return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">My Plans</h1>${active.length ? active.map(p => this.planCard(p)).join('') : '<p class="text-gray-500 text-center py-12">No active plans</p>'}</div>`; },
+      planCard(p) { const now = Date.now(); const elapsed = Math.floor((now - new Date(p.startDate)) / 86400000); const progress = Math.min(100, Math.max(0, (elapsed / p.lockDays) * 100)); const left = Math.max(0, p.lockDays - elapsed); const hSince = (now - new Date(p.lastClaim)) / 3600000; const claimable = hSince >= 24 ? ((p.amount * p.dailyRoi) / 100).toFixed(2) : 0; const expired = hSince > 40; return `<div class="glass-panel rounded-xl p-4 border border-gold-500/15 mb-4"><div class="flex justify-between"><h3 class="font-bold">${['','🥉','🥈','🥇','💎','👑'][p.vipLevel]} ${p.planName}</h3><span class="text-xs px-2 py-1 rounded-full bg-green-500/15 text-green-400">Active</span></div><div class="bg-black/40 rounded-full h-2 my-3"><div class="bg-gradient-gold h-full rounded-full" style="width:${progress}%"></div></div><div class="grid grid-cols-3 gap-2 text-center text-xs mb-3"><div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Invested</p><p class="font-bold">${p.amount.toFixed(2)}</p></div><div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Earned</p><p class="font-bold text-green-400">${(p.earned||0).toFixed(2)}</p></div><div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Days Left</p><p class="font-bold">${left}</p></div></div><button onclick="APP.claimPlanProfit('${p.id}')" class="w-full bg-gradient-gold text-black py-3 rounded-xl font-bold ${(claimable<=0||expired)?'opacity-50':''}" ${(claimable<=0||expired)?'disabled':''}>${expired?'❌ Expired':claimable>0?`💰 Claim ${claimable} USDT`:'⏳ Wait 24h'}</button></div>`; },
       
-      planCard(p) {
-        const now = Date.now();
-        const elapsed = Math.floor((now - new Date(p.startDate)) / 86400000);
-        const progress = Math.min(100, Math.max(0, (elapsed / p.lockDays) * 100));
-        const left = Math.max(0, p.lockDays - elapsed);
-        const hSince = (now - new Date(p.lastClaim)) / 3600000;
-        const claimable = hSince >= 24 ? ((p.amount * p.dailyRoi) / 100).toFixed(2) : 0;
-        const expired = hSince > 40;
-        
-        return `<div class="glass-panel rounded-xl p-4 border border-gold-500/15 mb-4">
-          <div class="flex justify-between"><h3 class="font-bold">${['','🥉','🥈','🥇','💎','👑'][p.vipLevel]} ${p.planName}</h3><span class="text-xs px-2 py-1 rounded-full bg-green-500/15 text-green-400">Active</span></div>
-          <div class="bg-black/40 rounded-full h-2 my-3"><div class="bg-gradient-gold h-full rounded-full" style="width:${progress}%"></div></div>
-          <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
-            <div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Invested</p><p class="font-bold">${p.amount.toFixed(2)}</p></div>
-            <div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Earned</p><p class="font-bold text-green-400">${(p.earned||0).toFixed(2)}</p></div>
-            <div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Days Left</p><p class="font-bold">${left}</p></div>
-          </div>
-          <button onclick="APP.claimPlanProfit('${p.id}')" class="w-full bg-gradient-gold text-black py-3 rounded-xl font-bold ${(claimable<=0||expired)?'opacity-50':''}" ${(claimable<=0||expired)?'disabled':''}>${expired?'❌ Expired':claimable>0?`💰 Claim ${claimable} USDT`:'⏳ Wait 24h'}</button>
-        </div>`;
-      },
-      
-      renderSettings() {
-        const u = this.currentUserData || {};
-        return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">Settings</h1>
-          <div class="glass-panel p-5 mb-4 space-y-2 text-sm">
-            <div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Username</span><span>${this.escapeHTML(u.username||'')}</span></div>
-            <div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Email</span><span>${this.escapeHTML(u.email||'')}</span></div>
-            <div class="flex justify-between py-2"><span class="text-gray-400">VIP</span><span class="text-gold-400 font-bold">${u.vipLevel||0}</span></div>
-          </div>
-          <button id="delete-account-btn" class="w-full border border-red-500/20 text-red-400 py-4 rounded-xl font-semibold">🗑 Delete Account</button>
-        </div>`;
-      },
-      
-      renderNotifications() {
-        const nots = this.currentUserData?.notifications || [];
-        return `<div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold">Notifications</h2><button onclick="APP.markAllRead();APP.closeModal()" class="text-xs text-gold-400 font-semibold">Mark All Read</button></div>
-        ${nots.length ? nots.map(n => `<div class="border-b border-white/8 py-3 ${n.read?'opacity-50':''}"><div class="flex gap-2"><span class="text-lg">${n.type==='reward'?'⭐':n.type==='success'?'✅':'🔔'}</span><div><p class="font-semibold text-sm">${this.escapeHTML(n.title)}</p><p class="text-xs text-gray-400">${this.escapeHTML(n.message)}</p><p class="text-[10px] text-gray-600 mt-1">${new Date(n.date).toLocaleString()}</p></div></div></div>`).join('') : '<p class="text-gray-500 text-center py-8">No notifications</p>'}`;
-      },
-      
-      async markAllRead() {
-        if (!this.currentUserData?.notifications) return;
-        this.currentUserData.notifications.forEach(n => n.read = true);
-        await this.saveUserData();
-        this.route();
-      },
+      renderSettings() { const u = this.currentUserData || {}; return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">Settings</h1><div class="glass-panel p-5 mb-4 space-y-2 text-sm"><div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Username</span><span>${this.escapeHTML(u.username||'')}</span></div><div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Email</span><span>${this.escapeHTML(u.email||'')}</span></div><div class="flex justify-between py-2"><span class="text-gray-400">VIP</span><span class="text-gold-400 font-bold">${u.vipLevel||0}</span></div></div><button id="delete-account-btn" class="w-full border border-red-500/20 text-red-400 py-4 rounded-xl font-semibold">🗑 Delete Account</button></div>`; },
+      renderNotifications() { const nots = this.currentUserData?.notifications || []; return `<div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold">Notifications</h2><button onclick="APP.markAllRead();APP.closeModal()" class="text-xs text-gold-400 font-semibold">Mark All Read</button></div>${nots.length ? nots.map(n => `<div class="border-b border-white/8 py-3 ${n.read?'opacity-50':''}"><div class="flex gap-2"><span class="text-lg">${n.type==='reward'?'⭐':n.type==='success'?'✅':'🔔'}</span><div><p class="font-semibold text-sm">${this.escapeHTML(n.title)}</p><p class="text-xs text-gray-400">${this.escapeHTML(n.message)}</p><p class="text-[10px] text-gray-600 mt-1">${new Date(n.date).toLocaleString()}</p></div></div></div>`).join('') : '<p class="text-gray-500 text-center py-8">No notifications</p>'}`; },
+      async markAllRead() { if (!this.currentUserData?.notifications) return; this.currentUserData.notifications.forEach(n => n.read = true); await this.saveUserData(); this.route(); },
       
       async claimCheckIn() {
         const today = new Date().toDateString();
         if (this.currentUserData._checkinDate === today) { showToast('⏳ Already claimed!', 'info'); return; }
-        
-        this.currentUserData._checkinDate = today;
-        this.currentUserData.balance.usdt += 0.1;
-        this.currentUserData.totalEarned += 0.1;
+        this.currentUserData._checkinDate = today; this.currentUserData.balance.usdt += 0.1; this.currentUserData.totalEarned += 0.1;
         this.currentUserData.lastCheckIn = new Date().toISOString();
-        this.currentUserData.transactions.unshift({
-          id: 'tx_'+Math.random().toString(36).substr(2,8), type: 'checkin', amount: 0.1,
-          currency: 'USDT', date: new Date().toISOString(), status: 'completed'
-        });
-        
-        await this.addNotification('🎁 Daily Bonus', '0.1 USDT!', 'reward');
-        await this.saveUserData();
-        showToast('✅ 0.1 USDT!', 'reward');
-        spawnConfetti(25);
-        this.route();
+        this.currentUserData.transactions.unshift({ id: 'tx_'+Math.random().toString(36).substr(2,8), type: 'checkin', amount: 0.1, currency: 'USDT', date: new Date().toISOString(), status: 'completed' });
+        await this.addNotification('🎁 Daily Bonus', '0.1 USDT!', 'reward'); await this.saveUserData();
+        showToast('✅ 0.1 USDT!', 'reward'); spawnConfetti(25); this.route();
       },
       
       startLiveFeed() {
-        const messages = [
-          { icon:'💰', txt:'deposited 5,000 USDT' }, { icon:'👑', txt:'upgraded to VIP 3' },
-          { icon:'💸', txt:'withdrew 850 USDT' }, { icon:'📈', txt:'earned 120 USDT' },
-          { icon:'🤝', txt:'joined via referral' }, { icon:'🎰', txt:'won 500 USDT!' },
-          { icon:'💎', txt:'deposited 10,000 USDT' }, { icon:'🎁', txt:'claimed bonus' }
-        ];
-        
-        const update = () => {
-          if (this.currentPage !== 'home') return;
-          const feed = document.getElementById('live-feed');
-          if (!feed) return;
-          const m = messages[Math.floor(Math.random()*messages.length)];
-          const user = '***'+Math.floor(Math.random()*900+100);
-          const time = new Date().toLocaleTimeString();
-          feed.insertAdjacentHTML('afterbegin', `<p class="border-b border-white/5 pb-1.5 mb-1.5 text-[11px]"><span class="text-gold-400">${m.icon}</span> User ${user} ${m.txt} <span class="text-gray-600 text-[10px]">· ${time}</span></p>`);
-          if (feed.children.length > 5) feed.lastElementChild.remove();
-        };
-        
-        update();
-        setInterval(update, 4000);
+        const messages = [ { icon:'💰', txt:'deposited 5,000 USDT' }, { icon:'👑', txt:'upgraded to VIP 3' }, { icon:'💸', txt:'withdrew 850 USDT' }, { icon:'📈', txt:'earned 120 USDT' }, { icon:'🤝', txt:'joined via referral' }, { icon:'🎰', txt:'won 500 USDT!' }, { icon:'🤖', txt:'started AI Copy Trade' }, { icon:'💎', txt:'deposited 10,000 USDT' } ];
+        const update = () => { if (this.currentPage !== 'home') return; const feed = document.getElementById('live-feed'); if (!feed) return; const m = messages[Math.floor(Math.random()*messages.length)]; const user = '***'+Math.floor(Math.random()*900+100); const time = new Date().toLocaleTimeString(); feed.insertAdjacentHTML('afterbegin', `<p class="border-b border-white/5 pb-1.5 mb-1.5 text-[11px]"><span class="text-gold-400">${m.icon}</span> User ${user} ${m.txt} <span class="text-gray-600 text-[10px]">· ${time}</span></p>`); if (feed.children.length > 5) feed.lastElementChild.remove(); };
+        update(); setInterval(update, 4000);
       },
       
-      // ============ SPIN ============
       startSpin() {
         if (this._spinning) return;
         if ((this.currentUserData?.spinAvailable||0) < 1) { showToast('No spins!','error'); return; }
-        
-        this._spinning = true;
-        const spinBtn = document.getElementById('spin-btn'), wheel = document.getElementById('spin-wheel');
-        const sc = document.getElementById('spin-count'), center = document.getElementById('spin-center-btn');
-        
-        if (spinBtn) { spinBtn.disabled = true; spinBtn.style.opacity = '0.6'; }
-        if (center) center.style.pointerEvents = 'none';
-        
-        this.currentUserData.spinAvailable--;
-        if (sc) sc.textContent = this.currentUserData.spinAvailable;
-        this.saveUserData();
-        
+        this._spinning = true; const spinBtn = document.getElementById('spin-btn'), wheel = document.getElementById('spin-wheel'), sc = document.getElementById('spin-count'), center = document.getElementById('spin-center-btn');
+        if (spinBtn) { spinBtn.disabled = true; spinBtn.style.opacity = '0.6'; } if (center) center.style.pointerEvents = 'none';
+        this.currentUserData.spinAvailable--; if (sc) sc.textContent = this.currentUserData.spinAvailable; this.saveUserData();
         const prizes = [{ a:1000,w:0.1 },{ a:500,w:0.2 },{ a:100,w:0.5 },{ a:50,w:1 },{ a:10,w:3 },{ a:5,w:5 },{ a:2,w:90 }];
         let tw = prizes.reduce((s,p)=>s+p.w,0), r = Math.random()*tw, prize = 2;
         for (const p of prizes) { r -= p.w; if (r <= 0) { prize = p.a; break; } }
-        
-        const map = {1000:0,500:1,100:3,50:5,10:7}, twos = [2,4,6];
-        const pos = map[prize]!==undefined ? map[prize] : twos[Math.floor(Math.random()*3)];
+        const map = {1000:0,500:1,100:3,50:5,10:7}, twos = [2,4,6]; const pos = map[prize]!==undefined ? map[prize] : twos[Math.floor(Math.random()*3)];
         const finalDeg = 360*(5+Math.floor(Math.random()*3)) + pos*45 + 22.5 + (Math.random()-0.5)*20;
-        
-        if (wheel) {
-          wheel.style.transition = 'transform 4s cubic-bezier(0.2,0.8,0.1,1)';
-          wheel.style.transform = 'rotate('+finalDeg+'deg)';
-          wheel.classList.remove('spin-wheel-glow');
-        }
-        
-        const self = this;
+        if (wheel) { wheel.style.transition = 'transform 4s cubic-bezier(0.2,0.8,0.1,1)'; wheel.style.transform = 'rotate('+finalDeg+'deg)'; wheel.classList.remove('spin-wheel-glow'); }
         setTimeout(async () => {
-          self.currentUserData.balance.usdt += prize;
-          self.currentUserData.totalEarned += prize;
-          self.currentUserData.transactions.unshift({
-            id:'spin_'+Math.random().toString(36).substr(2,8), type:'spin_win', amount:prize,
-            currency:'USDT', date:new Date().toISOString(), status:'completed', details:'Lucky Spin'
-          });
-          
-          await self.addNotification('🎰 Spin Win!','You won '+prize+' USDT!','reward');
-          await self.saveUserData();
-          
+          this.currentUserData.balance.usdt += prize; this.currentUserData.totalEarned += prize;
+          this.currentUserData.transactions.unshift({ id:'spin_'+Math.random().toString(36).substr(2,8), type:'spin_win', amount:prize, currency:'USDT', date:new Date().toISOString(), status:'completed', details:'Lucky Spin' });
+          await this.addNotification('🎰 Spin Win!','You won '+prize+' USDT!','reward'); await this.saveUserData();
           if (wheel) wheel.classList.add('spin-wheel-glow');
-          
           const popup = document.getElementById('spin-result-popup');
-          if (popup) {
-            document.getElementById('result-emoji').textContent = prize>=500?'🤩':prize>=100?'🥳':prize>=50?'🎉':'💰';
-            document.getElementById('result-title').textContent = prize>=500?'JACKPOT!':prize>=100?'Huge Win!':'You Won!';
-            document.getElementById('result-amount').textContent = prize+' USDT';
-            popup.classList.add('show');
-            setTimeout(()=>popup.classList.remove('show'),4000);
-          }
-          
-          if (prize>=100) spawnConfetti(80); else if (prize>=50) spawnConfetti(35);
-          showToast('🎰 Won '+prize+' USDT!', prize>=50?'reward':'success');
-          
-          if (self.currentUserData.spinAvailable>0) {
-            if(spinBtn){spinBtn.disabled=false;spinBtn.textContent='🎰 SPIN AGAIN';spinBtn.style.opacity='1';}
-            if(center)center.style.pointerEvents='auto';
-          } else {
-            if(spinBtn){spinBtn.disabled=true;spinBtn.textContent='😔 No Spins';spinBtn.style.opacity='0.5';}
-          }
-          
-          if(sc)sc.textContent=self.currentUserData.spinAvailable;
-          self._spinning=false;
+          if (popup) { document.getElementById('result-emoji').textContent = prize>=500?'🤩':prize>=100?'🥳':prize>=50?'🎉':'💰'; document.getElementById('result-title').textContent = prize>=500?'JACKPOT!':prize>=100?'Huge Win!':'You Won!'; document.getElementById('result-amount').textContent = prize+' USDT'; popup.classList.add('show'); setTimeout(()=>popup.classList.remove('show'),4000); }
+          if (prize>=100) spawnConfetti(80); else if (prize>=50) spawnConfetti(35); showToast('🎰 Won '+prize+' USDT!', prize>=50?'reward':'success');
+          if (this.currentUserData.spinAvailable>0) { if(spinBtn){spinBtn.disabled=false;spinBtn.textContent='🎰 SPIN AGAIN';spinBtn.style.opacity='1';} if(center)center.style.pointerEvents='auto'; }
+          else { if(spinBtn){spinBtn.disabled=true;spinBtn.textContent='😔 No Spins';spinBtn.style.opacity='0.5';} }
+          if(sc)sc.textContent=this.currentUserData.spinAvailable; this._spinning=false;
         },4000);
       },
       
-      // ============ VIP LOGIC ============
       async executeVIP(lvl, name, amt, roi, lock) {
         if ((this.currentUserData?.balance?.usdt||0) < amt) { showToast('Insufficient balance','error'); this.closeModal(); return; }
-        
-        this.currentUserData.balance.usdt -= amt;
-        this.currentUserData.totalDeposited += amt;
-        
-        const plan = {
-          id:'plan_'+Math.random().toString(36).substr(2,8), vipLevel:lvl, planName:name,
-          amount:amt, currency:'USDT', dailyRoi:roi, startDate:new Date().toISOString(),
-          endDate:new Date(Date.now()+lock*86400000).toISOString(), lockDays:lock,
-          earned:0, lastClaim:new Date().toISOString(), status:'active', totalClaims:0
-        };
-        
-        this.currentUserData.plans.push(plan);
-        this.currentUserData.vipLevel = Math.max(this.currentUserData.vipLevel, lvl);
-        if (amt>=100) this.currentUserData.spinAvailable += 1;
-        if (amt>=1000) this.currentUserData.spinAvailable += 4;
-        
-        const miningBonus = Math.floor(amt/50);
-        this.currentUserData.miningPower += miningBonus;
-        
-        this.currentUserData.transactions.unshift({
-          id:'tx_'+Math.random().toString(36).substr(2,8), type:'investment', amount:amt,
-          currency:'USDT', date:new Date().toISOString(), status:'completed',
-          details:`${name} Plan - ${amt} USDT`
-        });
-        
+        this.currentUserData.balance.usdt -= amt; this.currentUserData.totalDeposited += amt;
+        const plan = { id:'plan_'+Math.random().toString(36).substr(2,8), vipLevel:lvl, planName:name, amount:amt, currency:'USDT', dailyRoi:roi, startDate:new Date().toISOString(), endDate:new Date(Date.now()+lock*86400000).toISOString(), lockDays:lock, earned:0, lastClaim:new Date().toISOString(), status:'active', totalClaims:0 };
+        this.currentUserData.plans.push(plan); this.currentUserData.vipLevel = Math.max(this.currentUserData.vipLevel, lvl);
+        if (amt>=100) this.currentUserData.spinAvailable += 1; if (amt>=1000) this.currentUserData.spinAvailable += 4;
+        const miningBonus = Math.floor(amt/50); this.currentUserData.miningPower += miningBonus;
+        this.currentUserData.transactions.unshift({ id:'tx_'+Math.random().toString(36).substr(2,8), type:'investment', amount:amt, currency:'USDT', date:new Date().toISOString(), status:'completed', details:`${name} Plan` });
         await this.addNotification('💰 Investment Active',`${name}: ${amt} USDT at ${roi}% daily · +${miningBonus} HP`,'success');
-        await this.saveUserData();
-        this.closeModal();
-        showToast(`✅ ${name} activated! +${miningBonus} HP`,'success');
-        spawnConfetti(50);
-        this.route();
+        await this.saveUserData(); this.closeModal(); showToast(`✅ ${name} activated! +${miningBonus} HP`,'success'); spawnConfetti(50); this.route();
       },
       
       async claimPlanProfit(id) {
-        const p = this.currentUserData.plans.find(x=>x.id===id);
-        if (!p) return;
-        
+        const p = this.currentUserData.plans.find(x=>x.id===id); if (!p) return;
         const h = (Date.now()-new Date(p.lastClaim))/3600000;
-        if (h<24) { showToast('Wait 24h','info'); return; }
-        if (h>40) { showToast('Window expired','error'); p.lastClaim=new Date().toISOString(); await this.saveUserData(); this.route(); return; }
-        
-        const profit = parseFloat(((p.amount*p.dailyRoi)/100).toFixed(2));
-        p.earned += profit; p.lastClaim = new Date().toISOString(); p.totalClaims++;
-        
-        this.currentUserData.balance.usdt += profit;
-        this.currentUserData.totalEarned += profit;
-        
-        this.currentUserData.transactions.unshift({
-          id:'tx_'+Math.random().toString(36).substr(2,8), type:'profit', amount:profit,
-          currency:'USDT', date:new Date().toISOString(), status:'completed', details:p.planName
-        });
-        
+        if (h<24) { showToast('Wait 24h','info'); return; } if (h>40) { showToast('Window expired','error'); p.lastClaim=new Date().toISOString(); await this.saveUserData(); this.route(); return; }
+        const profit = parseFloat(((p.amount*p.dailyRoi)/100).toFixed(2)); p.earned += profit; p.lastClaim = new Date().toISOString(); p.totalClaims++;
+        this.currentUserData.balance.usdt += profit; this.currentUserData.totalEarned += profit;
+        this.currentUserData.transactions.unshift({ id:'tx_'+Math.random().toString(36).substr(2,8), type:'profit', amount:profit, currency:'USDT', date:new Date().toISOString(), status:'completed', details:p.planName });
         await this.addNotification('💰 Profit Claimed',profit.toFixed(2)+' USDT from '+p.planName,'success');
-        await this.saveUserData();
-        showToast('✅ '+profit.toFixed(2)+' USDT!','success');
-        spawnConfetti(20);
-        this.route();
+        await this.saveUserData(); showToast('✅ '+profit.toFixed(2)+' USDT!','success'); spawnConfetti(20); this.route();
+      },
+
+      renderCopyTrading() {
+        const u = this.currentUserData || {};
+        const resetDate = u.copyTradeResetDate ? new Date(u.copyTradeResetDate) : null;
+        const now = new Date();
+        if (resetDate && now > resetDate) { u.copyTradeCount = 0; u.copyTradeResetDate = null; this.saveUserData(); }
+        const remaining = 2 - (u.copyTradeCount || 0);
+        const pairs = [
+          { name: 'BTC/USDT', price: 67234.56, change: 2.34, winRate: 94, traders: 1243, risk: 'Low', min: 100, icon: '₿' },
+          { name: 'ETH/USDT', price: 3489.12, change: -0.78, winRate: 91, traders: 987, risk: 'Low', min: 100, icon: 'Ξ' },
+          { name: 'BNB/USDT', price: 589.45, change: 1.56, winRate: 88, traders: 654, risk: 'Medium', min: 100, icon: 'BNB' },
+          { name: 'SOL/USDT', price: 142.89, change: 3.21, winRate: 85, traders: 432, risk: 'Medium', min: 100, icon: '◎' },
+          { name: 'TRX/USDT', price: 0.1245, change: 0.45, winRate: 82, traders: 321, risk: 'High', min: 100, icon: 'TRX' }
+        ];
+        return `<div class="p-5 animate-fadeInUp"><div class="text-center mb-6"><div class="w-20 h-20 bg-gradient-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl ai-glow"><span class="text-4xl">🤖</span></div><h1 class="text-3xl font-serif font-black">AI Copy Trading</h1><p class="text-gray-400 text-sm mt-2">GoldenPower AI Signals</p></div><div class="glass-panel p-4 mb-5 border border-gold-500/30"><div class="flex justify-between items-center"><div><p class="text-xs text-gray-400">Daily Trades Remaining</p><p class="text-2xl font-bold text-gold-400">${remaining}/2</p></div><div class="text-right"><p class="text-xs text-gray-400">Reset in</p><p class="text-sm font-bold" id="reset-timer">Calculating...</p></div></div><div class="bg-black/40 rounded-full h-2 mt-3"><div class="bg-gradient-gold h-full rounded-full" style="width:${(remaining/2)*100}%"></div></div></div><div class="ticker-wrap bg-black/30 rounded-xl p-3 mb-5 border border-white/5 overflow-hidden"><div class="ticker flex gap-6 text-xs">${pairs.map(p => `<span class="flex items-center gap-2"><span class="text-gold-400">${p.icon}</span> ${p.name} <span class="${p.change>=0?'text-green-400':'text-red-400'}">${p.change>=0?'+':''}${p.change}%</span></span>`).join('')}</div></div><div class="space-y-4">${pairs.map(p => `<div class="glass-panel rounded-2xl p-5 border border-gold-500/15 hover:border-gold-500/40 transition-all"><div class="flex justify-between items-center mb-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full bg-gradient-gold flex items-center justify-center text-lg font-black text-black">${p.icon}</div><div><p class="font-bold">${p.name}</p><p class="text-xs text-gray-400">Volatility: ${p.risk}</p></div></div><div class="text-right"><p class="text-xl font-bold">$${p.price.toFixed(2)}</p><p class="text-sm ${p.change>=0?'text-green-400':'text-red-400'}">${p.change>=0?'+':''}${p.change}%</p></div></div><div class="grid grid-cols-2 gap-3 mb-4 text-center"><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Win Rate</p><p class="font-bold text-green-400">${p.winRate}%</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Traders</p><p class="font-bold">${p.traders}</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Min Trade</p><p class="font-bold text-gold-400">${p.min} USDT</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Est. Profit</p><p class="font-bold text-green-400">+1.3%</p></div></div><button class="copy-trade-btn w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold ripple ${remaining<1?'opacity-50':''}" data-pair="${p.name}" data-price="${p.price}" ${remaining<1?'disabled':''}>${remaining>0?'🤖 Copy Trade':'🔒 Daily Limit Reached'}</button></div>`).join('')}</div></div>`;
       },
       
-      // ============ EVENT ATTACHERS ============
-      attachLoginEvents() {
-        const form = document.getElementById('login-form');
-        if (!form) return;
-        form.onsubmit = async (e) => {
-          e.preventDefault();
-          const btn = form.querySelector('button[type="submit"]');
-          setButtonLoading(btn, true);
-          
-          const email = document.getElementById('login-email')?.value?.trim();
-          const password = document.getElementById('login-password')?.value;
-          
-          if (!email || !password) { showToast('Fill all fields','error'); setButtonLoading(btn,false); return; }
-          
-          const result = await this.loginWithEmail(sanitizeInput(email), password);
-          
-          if (result === true) {
-            showToast('Welcome back! 👋','success');
-            window.location.hash = 'home';
-          } else if (result !== '2fa_required') {
-            setButtonLoading(btn, false);
-          }
-        };
+      renderCopyHistory() {
+        const trades = this.currentUserData?.copyTrades || [];
+        return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">🤖 Copy Trade History</h1><div class="space-y-3">${trades.length ? trades.map(t => { const pos = t.profit > 0; return `<div class="glass-panel rounded-xl p-4 border ${pos?'border-green-500/20':'border-red-500/20'}"><div class="flex justify-between mb-2"><span class="font-bold">${t.pair}</span><span class="text-xs px-2 py-1 rounded-full ${pos?'bg-green-500/15 text-green-400':'bg-red-500/15 text-red-400'}">${pos?'+':''}${t.profit.toFixed(2)} USDT</span></div><div class="grid grid-cols-2 gap-2 text-xs text-gray-400"><div>Amount: <span class="text-white">${t.amount} USDT</span></div><div>ROI: <span class="${pos?'text-green-400':'text-red-400'}">${pos?'+':''}${t.roi}%</span></div><div>Entry: <span class="text-white">$${t.entryPrice.toFixed(2)}</span></div><div>Exit: <span class="text-white">$${t.exitPrice.toFixed(2)}</span></div></div><p class="text-[10px] text-gray-500 mt-2">${new Date(t.startTime || t.date).toLocaleString()}</p></div>`; }).join('') : '<p class="text-gray-500 text-center py-12">No AI trades yet</p>'}</div></div>`;
       },
-      
-      attachRegisterEvents() {
-        const form = document.getElementById('register-form');
-        if (!form) return;
-        form.onsubmit = async (e) => {
-          e.preventDefault();
-          const btn = form.querySelector('button[type="submit"]');
-          setButtonLoading(btn, true);
-          
-          const username = document.getElementById('reg-username')?.value?.trim();
-          const email = document.getElementById('reg-email')?.value?.trim();
-          const password = document.getElementById('reg-password')?.value;
-          const pin = document.getElementById('reg-pin')?.value;
-          const ref = document.getElementById('reg-ref')?.value?.trim() || this.getRefFromURL();
-          
-          if (!username || !email || !password) { showToast('Fill all fields','error'); setButtonLoading(btn,false); return; }
-          if (password.length < 6) { showToast('Password must be 6+ chars','error'); setButtonLoading(btn,false); return; }
-          if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { showToast('PIN must be 6 digits','error'); setButtonLoading(btn,false); return; }
-          
-          const success = await this.registerWithEmail(email, password, username, pin, ref);
-          if (success) {
-            window.location.hash = 'home';
-          } else {
-            setButtonLoading(btn, false);
-          }
-        };
-      },
-      
-      attachHomeEvents() {
-        document.getElementById('btn-checkin')?.addEventListener('click', () => this.claimCheckIn());
-      },
-      
-      attachDepositEvents() {
-        document.getElementById('submit-deposit-btn')?.addEventListener('click', async () => {
-          const btn = document.getElementById('submit-deposit-btn');
-          setButtonLoading(btn, true);
-          
-          const amt = parseFloat(document.getElementById('dep-amount')?.value);
-          const txid = document.getElementById('dep-tx')?.value?.trim();
-          
-          if (!amt || isNaN(amt) || amt < 50) { showToast('❌ Min 50 USDT','error'); setButtonLoading(btn,false); return; }
-          if (!txid || txid.length < 10) { showToast('❌ Enter valid TXID','error'); setButtonLoading(btn,false); return; }
-          
-          const sanitizedTxid = sanitizeInput(txid);
-          if (sanitizedTxid !== txid) { showToast('❌ Invalid characters in TXID!','error'); setButtonLoading(btn,false); return; }
-          
-          const isFirstDeposit = !this.currentUserData.hasMadeFirstDeposit;
-          
-          this.currentUserData.transactions.unshift({
-            id:'tx_'+Math.random().toString(36).substr(2,8), type:'deposit', amount:amt,
-            currency:'USDT', date:new Date().toISOString(), status:'pending',
-            txid:sanitizedTxid, isFirstDeposit
-          });
-          
-          if (isFirstDeposit) this.currentUserData.hasMadeFirstDeposit = true;
-          
-          await this.addNotification('📥 Deposit Submitted',amt+' USDT pending approval','system');
-          await this.saveUserData();
-          
-          document.getElementById('dep-amount').value = '';
-          document.getElementById('dep-tx').value = '';
-          
-          showToast('📥 Submitted for approval!','info');
-          setButtonLoading(btn, false);
-          setTimeout(()=>{window.location.hash='history';this.route();},1500);
-        });
-      },
-      
-      attachWithdrawEvents() {
-        document.getElementById('withdraw-submit-btn')?.addEventListener('click', async () => {
-          const btn = document.getElementById('withdraw-submit-btn');
-          setButtonLoading(btn, true);
-          
-          if (!this.currentUserData?.walletAddress) { showToast('Set wallet first!','error'); setButtonLoading(btn,false); return; }
-          
-          const amt = parseFloat(document.getElementById('w-amount')?.value);
-          const pin = document.getElementById('w-pin')?.value;
-          
-          if (!amt || amt < 10) { showToast('Min 10 USDT','error'); setButtonLoading(btn,false); return; }
-          if (amt > (this.currentUserData.balance?.usdt||0)) { showToast('Insufficient','error'); setButtonLoading(btn,false); return; }
-          if (pin !== this.currentUserData.securityPin) { showToast('Wrong PIN','error'); setButtonLoading(btn,false); return; }
-          
-          if (this.currentUserData.twoFactorEnabled) {
-            const code2fa = document.getElementById('w-2fa')?.value;
-            if (!code2fa || code2fa.length !== 6) { showToast('Enter 2FA code','error'); setButtonLoading(btn,false); return; }
-            if (code2fa !== this.generateTOTPCode(this.currentUserData.twoFactorSecret)) { showToast('Invalid 2FA','error'); setButtonLoading(btn,false); return; }
-          }
-          
-          const fee = Math.max(1, parseFloat((amt*0.01).toFixed(2)));
-          const net = parseFloat((amt-fee).toFixed(2));
-          
-          this.currentUserData.balance.usdt = parseFloat((this.currentUserData.balance.usdt-amt).toFixed(2));
-          this.currentUserData.totalWithdrawn += net;
-          
-          this.currentUserData.transactions.unshift({
-            id:'tx_'+Math.random().toString(36).substr(2,8), type:'withdraw', amount:net, fee,
-            currency:'USDT', date:new Date().toISOString(), status:'pending', address:this.currentUserData.walletAddress
-          });
-          
-          await this.addNotification('📤 Withdrawal Pending',net+' USDT','system');
-          await this.saveUserData();
-          
-          document.getElementById('w-amount').value = '';
-          document.getElementById('w-pin').value = '';
-          
-          showToast('📤 Pending approval','info');
-          setButtonLoading(btn, false);
-          setTimeout(()=>{window.location.hash='history';this.route();},1500);
-        });
-      },
-      
-      attachReferralEvents() {
-        document.getElementById('copy-ref-link')?.addEventListener('click', () => {
-          navigator.clipboard.writeText(`${location.origin}${location.pathname}?ref=${this.currentUserData?.referralCode||''}`);
-          showToast('✅ Link copied!','success');
-        });
-      },
-      
-      attachVIPEvents() {
-        document.querySelectorAll('.vip-buy-btn').forEach(b => {
-          b.onclick = () => {
-            if (b.disabled) return;
-            const lvl = parseInt(b.dataset.lvl), name = b.dataset.name;
-            const roi = parseFloat(b.dataset.roi), lock = parseInt(b.dataset.lock);
-            this.openVIPConfirm(lvl, name, roi, lock);
-          };
-        });
-      },
-      
-      openVIPConfirm(lvl, name, roi, lock) {
-        const balance = this.currentUserData?.balance?.usdt || 0;
-        if (balance < 50) { showToast('❌ Need 50+ USDT','error'); return; }
-        
-        const stepSize = 50, maxInvest = Math.floor(balance/stepSize)*stepSize;
-        const steps = [];
-        for (let amt=50; amt<=Math.min(maxInvest,10000); amt+=stepSize) steps.push(amt);
-        
-        const defaultAmt = steps[0], daily = (defaultAmt*roi/100).toFixed(2);
-        const icons = ['','🥉','🥈','🥇','💎','👑'];
-        
-        const content = `
-          <div class="text-center">
-            <div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4"><span class="text-3xl">${icons[lvl]}</span></div>
-            <h2 class="text-xl font-bold">${name} Plan</h2><p class="text-gold-400 font-bold">${roi}% Daily · ${lock} Days</p>
-            <div class="bg-black/30 rounded-xl p-4 my-4">
-              <p class="text-xs text-gray-400 mb-2">Select Amount:</p>
-              <div class="grid grid-cols-3 gap-2 mb-3">
-                ${steps.map(amt=>`<button class="vip-amount-btn bg-[#111] border ${amt===defaultAmt?'border-gold-500 bg-gold-500/10':'border-white/10'} rounded-lg py-2 px-3 text-sm font-bold" data-amount="${amt}">${amt} USDT</button>`).join('')}
-              </div>
-              <div class="bg-black/40 rounded-lg p-3">
-                <div class="flex justify-between text-sm"><span class="text-gray-400">Daily</span><span class="text-green-400 font-bold" id="vip-daily">${daily} USDT</span></div>
-                <div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Balance</span><span class="font-bold">${balance.toFixed(2)} USDT</span></div>
-              </div>
-            </div>
-            <div class="flex gap-3">
-              <button onclick="APP.closeModal()" class="flex-1 border border-white/15 py-3 rounded-xl font-semibold">Cancel</button>
-              <button id="confirm-vip-btn" class="flex-1 bg-gradient-gold text-black py-3 rounded-xl font-bold ripple" data-amount="${defaultAmt}">${btnHTML('✅ Invest '+defaultAmt+' USDT')}</button>
-            </div>
-          </div>`;
-        
+
+      async startCopyTrade(pair, price) {
+        if (!this.currentUserData) return;
+        const u = this.currentUserData;
+        const resetDate = u.copyTradeResetDate ? new Date(u.copyTradeResetDate) : null;
+        if (resetDate && new Date() > resetDate) { u.copyTradeCount = 0; u.copyTradeResetDate = null; }
+        if ((u.copyTradeCount||0) >= 2) { showToast('Daily limit reached (2/2)', 'error'); return; }
+        if ((u.balance?.usdt||0) < 100) { showToast('Min 100 USDT required', 'error'); return; }
+        const content = `<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4 ai-glow"><span class="text-3xl">🤖</span></div><h2 class="text-xl font-bold mb-2">Copy Trade ${pair}</h2><p class="text-sm text-gray-400 mb-4">AI Signal · 5 Minute Trade · +1.3% Profit</p><div class="bg-black/30 rounded-xl p-3 mb-4"><p class="text-xs text-gray-400">Amount (USDT)</p><input type="number" id="copy-amount" min="100" step="10" value="100" class="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white text-center text-xl outline-none focus:border-gold-500/50 mt-2"></div><div class="bg-black/30 rounded-xl p-3 mb-4 text-sm"><div class="flex justify-between"><span>Entry Price</span><span class="text-gold-400">$${price.toFixed(2)}</span></div><div class="flex justify-between mt-1"><span>Estimated Profit</span><span class="text-green-400 font-bold" id="est-profit">+1.30 USDT</span></div></div><div class="flex gap-3"><button onclick="APP.closeModal()" class="flex-1 border border-white/15 py-3 rounded-xl font-semibold">Cancel</button><button id="confirm-copy-btn" class="flex-1 bg-gradient-gold text-black py-3 rounded-xl font-bold">${btnHTML('🚀 Start Trade')}</button></div></div>`;
         this.openModal(content);
-        
         setTimeout(() => {
-          document.querySelectorAll('.vip-amount-btn').forEach(btn => {
-            btn.onclick = () => {
-              const amount = parseFloat(btn.dataset.amount);
-              document.getElementById('vip-daily').textContent = (amount*roi/100).toFixed(2)+' USDT';
-              document.getElementById('confirm-vip-btn').dataset.amount = amount;
-              document.querySelector('.btn-text').textContent = '✅ Invest '+amount+' USDT';
-              document.querySelectorAll('.vip-amount-btn').forEach(b=>{b.classList.remove('border-gold-500','bg-gold-500/10');b.classList.add('border-white/10');});
-              btn.classList.add('border-gold-500','bg-gold-500/10');btn.classList.remove('border-white/10');
-            };
-          });
-          
-          document.getElementById('confirm-vip-btn')?.addEventListener('click', async function() {
-            const btn = this;
-            setButtonLoading(btn, true);
-            const amount = parseFloat(btn.dataset.amount);
-            await APP.executeVIP(lvl, name, amount, roi, lock);
+          const amtInput = document.getElementById('copy-amount');
+          const estSpan = document.getElementById('est-profit');
+          if (amtInput && estSpan) amtInput.addEventListener('input', () => { const v = parseFloat(amtInput.value)||0; estSpan.textContent = '+'+ (v*0.013).toFixed(2)+' USDT'; });
+          document.getElementById('confirm-copy-btn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('confirm-copy-btn'); setButtonLoading(btn, true);
+            const amount = parseFloat(document.getElementById('copy-amount')?.value);
+            if (!amount || amount < 100) { showToast('Min 100 USDT', 'error'); setButtonLoading(btn, false); return; }
+            if (amount > (this.currentUserData.balance?.usdt||0)) { showToast('Insufficient balance', 'error'); setButtonLoading(btn, false); return; }
+            this.currentUserData.balance.usdt -= amount;
+            this.currentUserData.copyTradeCount = (this.currentUserData.copyTradeCount||0) + 1;
+            if (!this.currentUserData.copyTradeResetDate) {
+              const d = new Date(); d.setHours(d.getHours()+24); this.currentUserData.copyTradeResetDate = d.toISOString();
+            }
+            const tradeId = 'ct_'+Math.random().toString(36).substr(2,8);
+            const trade = { id: tradeId, userId: this.currentUserData.id, pair, amount, entryPrice: price, startTime: new Date().toISOString(), endTime: new Date(Date.now()+300000).toISOString(), status: 'active', profit: 0, roi: 0, exitPrice: 0 };
+            if (!this.currentUserData.copyTrades) this.currentUserData.copyTrades = [];
+            this.currentUserData.copyTrades.unshift(trade);
+            await this.saveUserData();
+            await db.collection('copyTrades').doc(tradeId).set(trade);
+            this.closeModal();
+            showToast('🤖 AI Trade started! 5 min countdown...', 'info');
+            this.route();
+            setTimeout(async () => {
+              const profit = parseFloat((amount * 0.013).toFixed(2));
+              const exitPrice = price * (1.013);
+              trade.status = 'completed'; trade.profit = profit; trade.roi = 1.3; trade.exitPrice = exitPrice;
+              this.currentUserData.balance.usdt = parseFloat((this.currentUserData.balance.usdt + profit).toFixed(2));
+              this.currentUserData.totalEarned = parseFloat((this.currentUserData.totalEarned + profit).toFixed(2));
+              if (!this.currentUserData.copyTrades) this.currentUserData.copyTrades = [];
+              const idx = this.currentUserData.copyTrades.findIndex(t => t.id === tradeId);
+              if (idx !== -1) this.currentUserData.copyTrades[idx] = trade;
+              this.currentUserData.transactions.unshift({ id: 'tx_'+Math.random().toString(36).substr(2,8), type: 'copy_trade', amount: profit, currency: 'USDT', date: new Date().toISOString(), status: 'completed', details: `AI Copy ${pair}` });
+              await db.collection('copyTrades').doc(tradeId).update({ status: 'completed', profit, roi: 1.3, exitPrice });
+              await this.saveUserData();
+              showToast(`🤖 Trade Completed! +${profit} USDT`, 'reward');
+              spawnConfetti(40);
+              if (this.currentPage === 'copy-trading' || this.currentPage === 'home') this.route();
+            }, 300000);
           });
         }, 100);
       },
-      
-      attachSpinEvents() {
-        setTimeout(() => {
-          const sb = document.getElementById('spin-btn'), cb = document.getElementById('spin-center-btn');
-          if (sb) sb.onclick = (e) => { e.preventDefault(); this.startSpin(); };
-          if (cb) cb.onclick = (e) => { e.preventDefault(); this.startSpin(); };
-        }, 200);
+
+      attachLoginEvents() {
+        const form = document.getElementById('login-form'); if (!form) return;
+        form.onsubmit = async (e) => { e.preventDefault(); const btn = form.querySelector('button[type="submit"]'); setButtonLoading(btn, true); const email = document.getElementById('login-email')?.value?.trim(); const password = document.getElementById('login-password')?.value; if (!email || !password) { showToast('Fill all fields','error'); setButtonLoading(btn,false); return; } const result = await this.loginWithEmail(sanitizeInput(email), password); if (result === true) { showToast('Welcome back! 👋','success'); window.location.hash = 'home'; } else if (result !== '2fa_required') setButtonLoading(btn, false); };
       },
-      
-      attachMiningEvents() {
-        document.getElementById('claim-mining-btn')?.addEventListener('click', async () => {
-          const u = this.currentUserData;
-          if (!u?.miningPower) return;
-          
-          const last = u.lastMiningClaim ? new Date(u.lastMiningClaim) : null;
-          const now = new Date();
-          const hourly = (u.miningPower * 0.005) / 24;
-          let claimable = hourly;
-          
-          if (last) {
-            const h = (now - last) / 3600000;
-            if (h < 1) { showToast('Once per hour','info'); return; }
-            claimable = Math.min(h, 24) * hourly;
-          }
-          
-          u.balance.usdt += parseFloat(claimable.toFixed(6));
-          u.totalEarned += parseFloat(claimable.toFixed(6));
-          u.lastMiningClaim = now.toISOString();
-          u.transactions.unshift({
-            id:'tx_'+Math.random().toString(36).substr(2,8), type:'mining',
-            amount:parseFloat(claimable.toFixed(6)), currency:'USDT',
-            date:now.toISOString(), status:'completed'
-          });
-          
-          await this.addNotification('⛏ Mining Reward',claimable.toFixed(6)+' USDT','success');
-          await this.saveUserData();
-          showToast('✅ '+claimable.toFixed(6)+' USDT!','success');
-          this.route();
-        });
+      attachRegisterEvents() {
+        const form = document.getElementById('register-form'); if (!form) return;
+        form.onsubmit = async (e) => { e.preventDefault(); const btn = form.querySelector('button[type="submit"]'); setButtonLoading(btn, true); const username = document.getElementById('reg-username')?.value?.trim(); const email = document.getElementById('reg-email')?.value?.trim(); const password = document.getElementById('reg-password')?.value; const pin = document.getElementById('reg-pin')?.value; const ref = document.getElementById('reg-ref')?.value?.trim() || this.getRefFromURL(); if (!username || !email || !password) { showToast('Fill all fields','error'); setButtonLoading(btn,false); return; } if (password.length < 6) { showToast('Password must be 6+ chars','error'); setButtonLoading(btn,false); return; } if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { showToast('PIN must be 6 digits','error'); setButtonLoading(btn,false); return; } const success = await this.registerWithEmail(email, password, username, pin, ref); if (success) window.location.hash = 'home'; else setButtonLoading(btn, false); };
       },
-      
-      attachProfileEvents() {
-        setTimeout(() => {
-          document.getElementById('wallet-btn')?.addEventListener('click', () => this.setWalletAddress());
-          document.getElementById('2fa-btn')?.addEventListener('click', () => {
-            if (this.currentUserData?.twoFactorEnabled) showToast('2FA already enabled!','info');
-            else this.enable2FA();
-          });
-        }, 200);
+      attachHomeEvents() { document.getElementById('btn-checkin')?.addEventListener('click', () => this.claimCheckIn()); },
+      attachDepositEvents() {
+        document.getElementById('submit-deposit-btn')?.addEventListener('click', async () => { const btn = document.getElementById('submit-deposit-btn'); setButtonLoading(btn, true); const amt = parseFloat(document.getElementById('dep-amount')?.value); const txid = document.getElementById('dep-tx')?.value?.trim(); if (!amt || isNaN(amt) || amt < 50) { showToast('❌ Min 50 USDT','error'); setButtonLoading(btn,false); return; } if (!txid || txid.length < 10) { showToast('❌ Enter valid TXID','error'); setButtonLoading(btn,false); return; } const sanitizedTxid = sanitizeInput(txid); const isFirstDeposit = !this.currentUserData.hasMadeFirstDeposit; this.currentUserData.transactions.unshift({ id:'tx_'+Math.random().toString(36).substr(2,8), type:'deposit', amount:amt, currency:'USDT', date:new Date().toISOString(), status:'pending', txid:sanitizedTxid, isFirstDeposit }); if (isFirstDeposit) this.currentUserData.hasMadeFirstDeposit = true; await this.addNotification('📥 Deposit Submitted',amt+' USDT pending approval','system'); await this.saveUserData(); document.getElementById('dep-amount').value = ''; document.getElementById('dep-tx').value = ''; showToast('📥 Submitted for approval!','info'); setButtonLoading(btn, false); setTimeout(()=>{window.location.hash='history';this.route();},1500); });
       },
-      
-      attachSettingsEvents() {
-        document.getElementById('delete-account-btn')?.addEventListener('click', async () => {
-          if (confirm('DELETE permanently?')) {
-            try {
-              const user = auth.currentUser;
-              if (user) { await db.collection('users').doc(user.uid).delete(); await user.delete(); }
-              this.currentUserData = null;
-              showToast('Account deleted','error');
-              window.location.hash = 'login';
-            } catch (error) { showToast('Error deleting','error'); }
-          }
-        });
+      attachWithdrawEvents() {
+        document.getElementById('withdraw-submit-btn')?.addEventListener('click', async () => { const btn = document.getElementById('withdraw-submit-btn'); setButtonLoading(btn, true); if (!this.currentUserData?.walletAddress) { showToast('Set wallet first!','error'); setButtonLoading(btn,false); return; } const amt = parseFloat(document.getElementById('w-amount')?.value); const pin = document.getElementById('w-pin')?.value; if (!amt || amt < 10) { showToast('Min 10 USDT','error'); setButtonLoading(btn,false); return; } if (amt > (this.currentUserData.balance?.usdt||0)) { showToast('Insufficient','error'); setButtonLoading(btn,false); return; } if (pin !== this.currentUserData.securityPin) { showToast('Wrong PIN','error'); setButtonLoading(btn,false); return; } if (this.currentUserData.twoFactorEnabled) { const code2fa = document.getElementById('w-2fa')?.value; if (!code2fa || code2fa.length !== 6) { showToast('Enter 2FA code','error'); setButtonLoading(btn,false); return; } if (code2fa !== this.generateTOTPCode(this.currentUserData.twoFactorSecret)) { showToast('Invalid 2FA','error'); setButtonLoading(btn,false); return; } } const fee = Math.max(1, parseFloat((amt*0.01).toFixed(2))); const net = parseFloat((amt-fee).toFixed(2)); this.currentUserData.balance.usdt = parseFloat((this.currentUserData.balance.usdt-amt).toFixed(2)); this.currentUserData.totalWithdrawn += net; this.currentUserData.transactions.unshift({ id:'tx_'+Math.random().toString(36).substr(2,8), type:'withdraw', amount:net, fee, currency:'USDT', date:new Date().toISOString(), status:'pending', address:this.currentUserData.walletAddress }); await this.addNotification('📤 Withdrawal Pending',net+' USDT','system'); await this.saveUserData(); document.getElementById('w-amount').value = ''; document.getElementById('w-pin').value = ''; showToast('📤 Pending approval','info'); setButtonLoading(btn, false); setTimeout(()=>{window.location.hash='history';this.route();},1500); });
       },
-      
+      attachReferralEvents() { document.getElementById('copy-ref-link')?.addEventListener('click', () => { navigator.clipboard.writeText(`${location.origin}${location.pathname}?ref=${this.currentUserData?.referralCode||''}`); showToast('✅ Link copied!','success'); }); },
+      attachVIPEvents() { document.querySelectorAll('.vip-buy-btn').forEach(b => { b.onclick = () => { if (b.disabled) return; this.openVIPConfirm(parseInt(b.dataset.lvl), b.dataset.name, parseFloat(b.dataset.roi), parseInt(b.dataset.lock)); }; }); },
+      openVIPConfirm(lvl, name, roi, lock) {
+        const balance = this.currentUserData?.balance?.usdt || 0; if (balance < 50) { showToast('❌ Need 50+ USDT','error'); return; }
+        const stepSize = 50, maxInvest = Math.floor(balance/stepSize)*stepSize; const steps = []; for (let amt=50; amt<=Math.min(maxInvest,10000); amt+=stepSize) steps.push(amt);
+        const defaultAmt = steps[0], daily = (defaultAmt*roi/100).toFixed(2);
+        const content = `<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4"><span class="text-3xl">${['','🥉','🥈','🥇','💎','👑'][lvl]}</span></div><h2 class="text-xl font-bold">${name} Plan</h2><p class="text-gold-400 font-bold">${roi}% Daily · ${lock} Days</p><div class="bg-black/30 rounded-xl p-4 my-4"><p class="text-xs text-gray-400 mb-2">Select Amount:</p><div class="grid grid-cols-3 gap-2 mb-3">${steps.map(amt=>`<button class="vip-amount-btn bg-[#111] border ${amt===defaultAmt?'border-gold-500 bg-gold-500/10':'border-white/10'} rounded-lg py-2 px-3 text-sm font-bold" data-amount="${amt}">${amt} USDT</button>`).join('')}</div><div class="bg-black/40 rounded-lg p-3"><div class="flex justify-between text-sm"><span class="text-gray-400">Daily</span><span class="text-green-400 font-bold" id="vip-daily">${daily} USDT</span></div><div class="flex justify-between text-sm mt-1"><span class="text-gray-400">Balance</span><span class="font-bold">${balance.toFixed(2)} USDT</span></div></div></div><div class="flex gap-3"><button onclick="APP.closeModal()" class="flex-1 border border-white/15 py-3 rounded-xl font-semibold">Cancel</button><button id="confirm-vip-btn" class="flex-1 bg-gradient-gold text-black py-3 rounded-xl font-bold ripple" data-amount="${defaultAmt}">${btnHTML('✅ Invest '+defaultAmt+' USDT')}</button></div></div>`;
+        this.openModal(content);
+        setTimeout(() => { document.querySelectorAll('.vip-amount-btn').forEach(btn => { btn.onclick = () => { const amount = parseFloat(btn.dataset.amount); document.getElementById('vip-daily').textContent = (amount*roi/100).toFixed(2)+' USDT'; document.getElementById('confirm-vip-btn').dataset.amount = amount; document.querySelector('.btn-text').textContent = '✅ Invest '+amount+' USDT'; document.querySelectorAll('.vip-amount-btn').forEach(b=>{b.classList.remove('border-gold-500','bg-gold-500/10');b.classList.add('border-white/10');}); btn.classList.add('border-gold-500','bg-gold-500/10');btn.classList.remove('border-white/10'); }; }); document.getElementById('confirm-vip-btn')?.addEventListener('click', async function() { const btn = this; setButtonLoading(btn, true); const amount = parseFloat(btn.dataset.amount); await APP.executeVIP(lvl, name, amount, roi, lock); }); }, 100);
+      },
+      attachSpinEvents() { setTimeout(() => { const sb = document.getElementById('spin-btn'), cb = document.getElementById('spin-center-btn'); if (sb) sb.onclick = (e) => { e.preventDefault(); this.startSpin(); }; if (cb) cb.onclick = (e) => { e.preventDefault(); this.startSpin(); }; }, 200); },
+      attachMiningEvents() { document.getElementById('claim-mining-btn')?.addEventListener('click', async () => { const u = this.currentUserData; if (!u?.miningPower) return; const last = u.lastMiningClaim ? new Date(u.lastMiningClaim) : null; const now = new Date(); const hourly = (u.miningPower * 0.005) / 24; let claimable = hourly; if (last) { const h = (now - last) / 3600000; if (h < 1) { showToast('Once per hour','info'); return; } claimable = Math.min(h, 24) * hourly; } u.balance.usdt += parseFloat(claimable.toFixed(6)); u.totalEarned += parseFloat(claimable.toFixed(6)); u.lastMiningClaim = now.toISOString(); u.transactions.unshift({ id:'tx_'+Math.random().toString(36).substr(2,8), type:'mining', amount:parseFloat(claimable.toFixed(6)), currency:'USDT', date:now.toISOString(), status:'completed' }); await this.addNotification('⛏ Mining Reward',claimable.toFixed(6)+' USDT','success'); await this.saveUserData(); showToast('✅ '+claimable.toFixed(6)+' USDT!','success'); this.route(); }); },
+      attachProfileEvents() { setTimeout(() => { document.getElementById('wallet-btn')?.addEventListener('click', () => this.setWalletAddress()); document.getElementById('2fa-btn')?.addEventListener('click', () => { if (this.currentUserData?.twoFactorEnabled) showToast('2FA already enabled!','info'); else this.enable2FA(); }); }, 200); },
+      attachSettingsEvents() { document.getElementById('delete-account-btn')?.addEventListener('click', async () => { if (confirm('DELETE permanently?')) { try { const user = auth.currentUser; if (user) { await db.collection('users').doc(user.uid).delete(); await user.delete(); } this.currentUserData = null; showToast('Account deleted','error'); window.location.hash = 'login'; } catch (error) { showToast('Error deleting','error'); } } }); },
       attachPlansEvents() {},
+      attachCopyTradingEvents() {
+    document.querySelectorAll('.copy-trade-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        const pair = btn.dataset.pair;
+        const price = parseFloat(btn.dataset.price);
+        this.startCopyTrade(pair, price);
+      });
+    });
+    
+    setInterval(() => {
+      const timerEl = document.getElementById('reset-timer');
+      if (!timerEl) return;
+      const u = this.currentUserData;
+      if (!u?.copyTradeResetDate) { timerEl.textContent = '--:--:--'; return; }
+      const diff = new Date(u.copyTradeResetDate) - new Date();
+      if (diff <= 0) { timerEl.textContent = 'Reset!'; u.copyTradeCount = 0; u.copyTradeResetDate = null; this.saveUserData(); return; }
+      const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+      timerEl.textContent = `${h}h ${m}m ${s}s`;
+    }, 1000);
+
+    // ✅ REAL BINANCE LIVE PRICES - UPDATES EVERY 3 SECONDS
+    const binancePairs = {
+      'BTC/USDT': 'BTCUSDT',
+      'ETH/USDT': 'ETHUSDT',
+      'BNB/USDT': 'BNBUSDT',
+      'SOL/USDT': 'SOLUSDT',
+      'TRX/USDT': 'TRXUSDT'
+    };
+    
+    const fetchLivePrices = async () => {
+      if (this.currentPage !== 'copy-trading') return;
+      try {
+        const symbols = JSON.stringify(Object.values(binancePairs));
+        const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${symbols}`);
+        const data = await response.json();
+        
+        document.querySelectorAll('.glass-panel.rounded-2xl.p-5').forEach(card => {
+          const pairName = card.querySelector('.font-bold')?.textContent?.trim();
+          if (!pairName) return;
+          
+          const symbol = binancePairs[pairName];
+          if (!symbol) return;
+          
+          const ticker = data.find(d => d.symbol === symbol);
+          if (!ticker) return;
+          
+          const priceEl = card.querySelector('.text-xl.font-bold');
+          const changeEl = card.querySelector('.text-sm');
+          
+          if (priceEl) {
+            const price = parseFloat(ticker.lastPrice);
+            priceEl.textContent = '$' + (price >= 1 ? price.toFixed(2) : price.toFixed(4));
+          }
+          
+          if (changeEl) {
+            const change = parseFloat(ticker.priceChangePercent);
+            changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+            changeEl.className = 'text-sm ' + (change >= 0 ? 'text-green-400' : 'text-red-400');
+          }
+          
+          const copyBtn = card.querySelector('.copy-trade-btn');
+          if (copyBtn && ticker.lastPrice) {
+            copyBtn.dataset.price = parseFloat(ticker.lastPrice);
+          }
+        });
+      } catch (err) {
+        console.log('Binance fetch error:', err.message);
+      }
+    };
+    
+    fetchLivePrices();
+    setInterval(fetchLivePrices, 3000);
+  },
       
-      // ============ WALLET & 2FA ============
       setWalletAddress() {
         if (!this.currentUserData) return;
-        
-        if (this.currentUserData.walletAddress) {
-          this.openModal(`<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4"><span class="text-3xl">💳</span></div><h2 class="text-xl font-bold mb-2">Wallet Address</h2><div class="bg-black/50 p-3 rounded-xl mb-4"><p class="font-mono text-gold-400 break-all text-xs">${this.currentUserData.walletAddress}</p></div><p class="text-xs text-yellow-400 mb-4">⚠️ Cannot be changed</p><button onclick="APP.closeModal()" class="w-full bg-gradient-gold text-black py-3 rounded-xl font-bold">Close</button></div>`);
-          return;
-        }
-        
+        if (this.currentUserData.walletAddress) { this.openModal(`<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4"><span class="text-3xl">💳</span></div><h2 class="text-xl font-bold mb-2">Wallet Address</h2><div class="bg-black/50 p-3 rounded-xl mb-4"><p class="font-mono text-gold-400 break-all text-xs">${this.currentUserData.walletAddress}</p></div><p class="text-xs text-yellow-400 mb-4">⚠️ Cannot be changed</p><button onclick="APP.closeModal()" class="w-full bg-gradient-gold text-black py-3 rounded-xl font-bold">Close</button></div>`); return; }
         this.openModal(`<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4"><span class="text-3xl">💳</span></div><h2 class="text-xl font-bold mb-2">Set Wallet</h2><p class="text-sm text-gray-400 mb-4">Enter TRC20 USDT address</p><p class="text-xs text-yellow-400 mb-4">⚠️ Can only be set ONCE!</p><input type="text" id="wallet-address-input" placeholder="TYourTRC20Address..." class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white text-sm outline-none focus:border-gold-500/50 mb-4"><button id="save-wallet-btn" class="w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold">✅ Save</button><button id="cancel-wallet-btn" class="w-full mt-3 text-gray-400 text-sm">Cancel</button></div>`);
-        
-        setTimeout(() => {
-          document.getElementById('cancel-wallet-btn')?.addEventListener('click',()=>this.closeModal());
-          document.getElementById('save-wallet-btn')?.addEventListener('click',async()=>{
-            const addr = sanitizeInput(document.getElementById('wallet-address-input')?.value?.trim()||'');
-            if(!addr.startsWith('T')||addr.length<30){showToast('Invalid TRC20 address','error');return;}
-            this.currentUserData.walletAddress=addr;this.currentUserData.walletAddressSetAt=new Date().toISOString();
-            await this.saveUserData();this.closeModal();showToast('✅ Saved!','success');this.route();
-          });
-        },100);
+        setTimeout(() => { document.getElementById('cancel-wallet-btn')?.addEventListener('click',()=>this.closeModal()); document.getElementById('save-wallet-btn')?.addEventListener('click',async()=>{ const addr = sanitizeInput(document.getElementById('wallet-address-input')?.value?.trim()||''); if(!addr.startsWith('T')||addr.length<30){showToast('Invalid TRC20 address','error');return;} this.currentUserData.walletAddress=addr;this.currentUserData.walletAddressSetAt=new Date().toISOString(); await this.saveUserData();this.closeModal();showToast('✅ Saved!','success');this.route(); }); },100);
       },
-      
       enable2FA() {
         if (!this.currentUserData || this.currentUserData.twoFactorEnabled) return;
-        
-        const secret = this.generateTOTPSecret();
-        const testCode = this.generateTOTPCode(secret);
-        
+        const secret = this.generateTOTPSecret(); const testCode = this.generateTOTPCode(secret);
         this.openModal(`<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4"><span class="text-3xl">🔐</span></div><h2 class="text-xl font-bold mb-2">Enable 2FA</h2><p class="text-sm text-gray-400 mb-3">Secret key:</p><div class="bg-black/50 p-3 rounded-xl mb-4"><p class="font-mono text-gold-400 break-all text-xs">${secret}</p></div><div class="bg-black/30 rounded-xl p-3 mb-4"><p class="text-xs text-gray-400">Current Code:</p><p class="font-mono text-green-400 text-2xl font-bold" id="totp-display">${testCode}</p></div><p class="text-xs text-yellow-400 mb-4">⚠️ Save this secret!</p><input type="text" id="verify-totp-input" maxlength="6" placeholder="Enter code" class="w-full bg-[#111] border border-white/10 rounded-xl p-3.5 text-white text-center text-2xl tracking-widest outline-none focus:border-gold-500/50 mb-4"><button id="confirm-2fa-btn" class="w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold mb-2">✅ Verify & Enable</button><button id="cancel-2fa-btn" class="w-full text-gray-400 text-sm py-2">Cancel</button></div>`);
-        
-        let totpInterval;
-        setTimeout(() => {
-          totpInterval = setInterval(() => {
-            const display = document.getElementById('totp-display');
-            if(display) display.textContent = this.generateTOTPCode(secret);
-          }, 1000);
-          
-          document.getElementById('cancel-2fa-btn')?.addEventListener('click',()=>{clearInterval(totpInterval);this.closeModal();});
-          document.getElementById('confirm-2fa-btn')?.addEventListener('click',async()=>{
-            const userCode = document.getElementById('verify-totp-input')?.value?.trim();
-            if(userCode !== this.generateTOTPCode(secret)){showToast('❌ Invalid code!','error');return;}
-            this.currentUserData.twoFactorEnabled=true;this.currentUserData.twoFactorSecret=secret;
-            await this.saveUserData();clearInterval(totpInterval);this.closeModal();
-            showToast('✅ 2FA Enabled!','success');spawnConfetti(20);this.route();
-          });
-        },100);
+        let totpInterval; setTimeout(() => { totpInterval = setInterval(() => { const display = document.getElementById('totp-display'); if(display) display.textContent = this.generateTOTPCode(secret); }, 1000); document.getElementById('cancel-2fa-btn')?.addEventListener('click',()=>{clearInterval(totpInterval);this.closeModal();}); document.getElementById('confirm-2fa-btn')?.addEventListener('click',async()=>{ const userCode = document.getElementById('verify-totp-input')?.value?.trim(); if(userCode !== this.generateTOTPCode(secret)){showToast('❌ Invalid code!','error');return;} this.currentUserData.twoFactorEnabled=true;this.currentUserData.twoFactorSecret=secret; await this.saveUserData();clearInterval(totpInterval);this.closeModal();showToast('✅ 2FA Enabled!','success');spawnConfetti(20);this.route(); }); },100);
       }
     };
 
-    // ============ LAUNCH ============
     window.addEventListener('hashchange', () => APP.route());
-    window.addEventListener('load', () => {
-      setTimeout(async () => {
-        await APP.init();
-        if (window.lucide) { try { lucide.createIcons(); } catch(e) {} }
-      }, 100);
-    });
+    window.addEventListener('load', () => { setTimeout(async () => { await APP.init(); if (window.lucide) { try { lucide.createIcons(); } catch(e) {} } }, 100); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') APP.closeModal(); });
-    
-    console.log('🏆 GOLDENPOWER v9.0 · Referral Tasks · Real 2FA · Password Storage · Loading States');
-    console.log('✅ Referral Tasks: 2→8, 5→20, 10→50, 25→150, 50→400, 100→1000 USDT');
-    console.log('✅ Real TOTP 2FA with verification');
-    console.log('✅ Password stored in Firestore (education purpose)');
-    console.log('✅ Loading spinners on all submit buttons');
-    console.log('✅ Anti XSS protection');
+    console.log('🤖 GOLDENPOWER AI v10 · Copy Trading · Real 2FA · Full Ecosystem');
   </script>
 </body>
 </html>
