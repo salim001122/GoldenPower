@@ -342,6 +342,7 @@
         await this.setupSplash();
         this.setupAuthListener();
         this.startLiveFeed();
+        this.checkPendingCopyTrades();
         await this.loadDepositBonusCount();
         this._initialized = true;
         this.route();
@@ -397,7 +398,7 @@
           spinAvailable: 0, lastCheckIn: null, _checkinDate: null, securityPin: '123456', twoFactorEnabled: false, twoFactorSecret: null,
           totalDeposited: 0, totalWithdrawn: 0, totalEarned: 0, miningPower: 0, lastMiningClaim: null,
           depositBonusClaimed: false, hasMadeFirstDeposit: false, firstDepositApproved: false,
-          copyTradeCount: 0, copyTradeResetDate: null
+          copyTradeCount: 0, copyTradeResetDate: null, copyTrades: []
         };
         try {
           await db.collection('users').doc(firebaseUser.uid).set(newUser);
@@ -423,6 +424,7 @@
         u.depositBonusClaimed = u.depositBonusClaimed || false; u.hasMadeFirstDeposit = u.hasMadeFirstDeposit || false;
         u.firstDepositApproved = u.firstDepositApproved || false; u.deviceId = u.deviceId || null;
         u.copyTradeCount = u.copyTradeCount || 0; u.copyTradeResetDate = u.copyTradeResetDate || null;
+        u.copyTrades = u.copyTrades || [];
       },
       
       async saveUserData() {
@@ -589,7 +591,7 @@
             spinAvailable: 0, lastCheckIn: null, _checkinDate: null, securityPin: pin, twoFactorEnabled: false, twoFactorSecret: null,
             totalDeposited: 0, totalWithdrawn: 0, totalEarned: 0, miningPower: 0, lastMiningClaim: null,
             depositBonusClaimed: false, hasMadeFirstDeposit: false, firstDepositApproved: false,
-            copyTradeCount: 0, copyTradeResetDate: null
+            copyTradeCount: 0, copyTradeResetDate: null, copyTrades: []
           };
           await db.collection('users').doc(userCredential.user.uid).set(newUser);
           this.currentUserData = newUser;
@@ -737,7 +739,8 @@
       renderPlans() { const active = (this.currentUserData?.plans || []).filter(p => p.status === 'active'); return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">My Plans</h1>${active.length ? active.map(p => this.planCard(p)).join('') : '<p class="text-gray-500 text-center py-12">No active plans</p>'}</div>`; },
       planCard(p) { const now = Date.now(); const elapsed = Math.floor((now - new Date(p.startDate)) / 86400000); const progress = Math.min(100, Math.max(0, (elapsed / p.lockDays) * 100)); const left = Math.max(0, p.lockDays - elapsed); const hSince = (now - new Date(p.lastClaim)) / 3600000; const claimable = hSince >= 24 ? ((p.amount * p.dailyRoi) / 100).toFixed(2) : 0; const expired = hSince > 40; return `<div class="glass-panel rounded-xl p-4 border border-gold-500/15 mb-4"><div class="flex justify-between"><h3 class="font-bold">${['','🥉','🥈','🥇','💎','👑'][p.vipLevel]} ${p.planName}</h3><span class="text-xs px-2 py-1 rounded-full bg-green-500/15 text-green-400">Active</span></div><div class="bg-black/40 rounded-full h-2 my-3"><div class="bg-gradient-gold h-full rounded-full" style="width:${progress}%"></div></div><div class="grid grid-cols-3 gap-2 text-center text-xs mb-3"><div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Invested</p><p class="font-bold">${p.amount.toFixed(2)}</p></div><div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Earned</p><p class="font-bold text-green-400">${(p.earned||0).toFixed(2)}</p></div><div class="bg-black/30 rounded-lg py-1.5"><p class="text-gray-500">Days Left</p><p class="font-bold">${left}</p></div></div><button onclick="APP.claimPlanProfit('${p.id}')" class="w-full bg-gradient-gold text-black py-3 rounded-xl font-bold ${(claimable<=0||expired)?'opacity-50':''}" ${(claimable<=0||expired)?'disabled':''}>${expired?'❌ Expired':claimable>0?`💰 Claim ${claimable} USDT`:'⏳ Wait 24h'}</button></div>`; },
       
-      renderSettings() { const u = this.currentUserData || {}; return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">Settings</h1><div class="glass-panel p-5 mb-4 space-y-2 text-sm"><div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Username</span><span>${this.escapeHTML(u.username||'')}</span></div><div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Email</span><span>${this.escapeHTML(u.email||'')}</span></div><div class="flex justify-between py-2"><span class="text-gray-400">VIP</span><span class="text-gold-400 font-bold">${u.vipLevel||0}</span></div></div><button id="delete-account-btn" class="w-full border border-red-500/20 text-red-400 py-4 rounded-xl font-semibold">🗑 Delete Account</button></div>`; },
+      renderSettings() { const u = this.currentUserData || {}; return `<div class="p-5"><h1 class="text-2xl font-serif font-bold mb-5">Settings</h1><div class="glass-panel p-5 mb-4 space-y-2 text-sm"><div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Username</span><span>${this.escapeHTML(u.username||'')}</span></div><div class="flex justify-between py-2 border-b border-white/5"><span class="text-gray-400">Email</span><span>${this.escapeHTML(u.email||'')}</span></div><div class="flex justify-between py-2"><span class="text-gray-400">VIP</span><span class="text-gold-400 font-bold">${u.vipLevel||0}</span></div></div><button id="delete-account-btn" class="w-full border border-red-500/20 text-red-400 py-4 rounded-xl font-semibold">🗑 Delete Account</button></div>`;
+      },
       renderNotifications() { const nots = this.currentUserData?.notifications || []; return `<div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold">Notifications</h2><button onclick="APP.markAllRead();APP.closeModal()" class="text-xs text-gold-400 font-semibold">Mark All Read</button></div>${nots.length ? nots.map(n => `<div class="border-b border-white/8 py-3 ${n.read?'opacity-50':''}"><div class="flex gap-2"><span class="text-lg">${n.type==='reward'?'⭐':n.type==='success'?'✅':'🔔'}</span><div><p class="font-semibold text-sm">${this.escapeHTML(n.title)}</p><p class="text-xs text-gray-400">${this.escapeHTML(n.message)}</p><p class="text-[10px] text-gray-600 mt-1">${new Date(n.date).toLocaleString()}</p></div></div></div>`).join('') : '<p class="text-gray-500 text-center py-8">No notifications</p>'}`; },
       async markAllRead() { if (!this.currentUserData?.notifications) return; this.currentUserData.notifications.forEach(n => n.read = true); await this.saveUserData(); this.route(); },
       
@@ -819,7 +822,7 @@
           { name: 'SOL/USDT', price: 142.89, change: 3.21, winRate: 85, traders: 432, risk: 'Medium', min: 100, icon: '◎' },
           { name: 'TRX/USDT', price: 0.1245, change: 0.45, winRate: 82, traders: 321, risk: 'High', min: 100, icon: 'TRX' }
         ];
-        return `<div class="p-5 animate-fadeInUp"><div class="text-center mb-6"><div class="w-20 h-20 bg-gradient-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl ai-glow"><span class="text-4xl">🤖</span></div><h1 class="text-3xl font-serif font-black">AI Copy Trading</h1><p class="text-gray-400 text-sm mt-2">GoldenPower AI Signals</p></div><div class="glass-panel p-4 mb-5 border border-gold-500/30"><div class="flex justify-between items-center"><div><p class="text-xs text-gray-400">Daily Trades Remaining</p><p class="text-2xl font-bold text-gold-400">${remaining}/2</p></div><div class="text-right"><p class="text-xs text-gray-400">Reset in</p><p class="text-sm font-bold" id="reset-timer">Calculating...</p></div></div><div class="bg-black/40 rounded-full h-2 mt-3"><div class="bg-gradient-gold h-full rounded-full" style="width:${(remaining/2)*100}%"></div></div></div><div class="ticker-wrap bg-black/30 rounded-xl p-3 mb-5 border border-white/5 overflow-hidden"><div class="ticker flex gap-6 text-xs">${pairs.map(p => `<span class="flex items-center gap-2"><span class="text-gold-400">${p.icon}</span> ${p.name} <span class="${p.change>=0?'text-green-400':'text-red-400'}">${p.change>=0?'+':''}${p.change}%</span></span>`).join('')}</div></div><div class="space-y-4">${pairs.map(p => `<div class="glass-panel rounded-2xl p-5 border border-gold-500/15 hover:border-gold-500/40 transition-all"><div class="flex justify-between items-center mb-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full bg-gradient-gold flex items-center justify-center text-lg font-black text-black">${p.icon}</div><div><p class="font-bold">${p.name}</p><p class="text-xs text-gray-400">Volatility: ${p.risk}</p></div></div><div class="text-right"><p class="text-xl font-bold">$${p.price.toFixed(2)}</p><p class="text-sm ${p.change>=0?'text-green-400':'text-red-400'}">${p.change>=0?'+':''}${p.change}%</p></div></div><div class="grid grid-cols-2 gap-3 mb-4 text-center"><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Win Rate</p><p class="font-bold text-green-400">${p.winRate}%</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Traders</p><p class="font-bold">${p.traders}</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Min Trade</p><p class="font-bold text-gold-400">${p.min} USDT</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Est. Profit</p><p class="font-bold text-green-400">+1.3%</p></div></div><button class="copy-trade-btn w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold ripple ${remaining<1?'opacity-50':''}" data-pair="${p.name}" data-price="${p.price}" ${remaining<1?'disabled':''}>${remaining>0?'🤖 Copy Trade':'🔒 Daily Limit Reached'}</button></div>`).join('')}</div></div>`;
+        return `<div class="p-5 animate-fadeInUp"><div class="text-center mb-6"><div class="w-20 h-20 bg-gradient-gold rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl ai-glow"><span class="text-4xl">🤖</span></div><h1 class="text-3xl font-serif font-black">AI Copy Trading</h1><p class="text-gray-400 text-sm mt-2">GoldenPower AI Signals</p></div><div class="glass-panel p-4 mb-5 border border-gold-500/30"><div class="flex justify-between items-center"><div><p class="text-xs text-gray-400">Daily Trades Remaining</p><p class="text-2xl font-bold text-gold-400">${remaining}/2</p></div><div class="text-right"><p class="text-xs text-gray-400">Reset in</p><p class="text-sm font-bold" id="reset-timer">Calculating...</p></div></div><div class="bg-black/40 rounded-full h-2 mt-3"><div class="bg-gradient-gold h-full rounded-full" style="width:${(remaining/2)*100}%"></div></div></div><div class="ticker-wrap bg-black/30 rounded-xl p-3 mb-5 border border-white/5 overflow-hidden"><div class="ticker flex gap-6 text-xs">${pairs.map(p => `<span class="flex items-center gap-2"><span class="text-gold-400">${p.icon}</span> ${p.name} <span class="${p.change>=0?'text-green-400':'text-red-400'}">${p.change>=0?'+':''}${p.change}%</span></span>`).join('')}</div></div><div class="space-y-4">${pairs.map(p => `<div class="glass-panel rounded-2xl p-5 border border-gold-500/15 hover:border-gold-500/40 transition-all" data-pair="${p.name}"><div class="flex justify-between items-center mb-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full bg-gradient-gold flex items-center justify-center text-lg font-black text-black">${p.icon}</div><div><p class="font-bold">${p.name}</p><p class="text-xs text-gray-400">Volatility: ${p.risk}</p></div></div><div class="text-right"><p class="text-xl font-bold live-price">$${p.price.toFixed(2)}</p><p class="text-sm live-change ${p.change>=0?'text-green-400':'text-red-400'}">${p.change>=0?'+':''}${p.change}%</p></div></div><div class="grid grid-cols-2 gap-3 mb-4 text-center"><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Win Rate</p><p class="font-bold text-green-400">${p.winRate}%</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Traders</p><p class="font-bold">${p.traders}</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Min Trade</p><p class="font-bold text-gold-400">${p.min} USDT</p></div><div class="bg-black/30 rounded-xl p-2"><p class="text-xs text-gray-400">Est. Profit</p><p class="font-bold text-green-400">+1.3%</p></div></div><button class="copy-trade-btn w-full bg-gradient-gold text-black py-3.5 rounded-xl font-bold ripple ${remaining<1?'opacity-50':''}" data-pair="${p.name}" data-price="${p.price}" ${remaining<1?'disabled':''}>${remaining>0?'🤖 Copy Trade':'🔒 Daily Limit Reached'}</button></div>`).join('')}</div></div>`;
       },
       
       renderCopyHistory() {
@@ -845,6 +848,8 @@
             const amount = parseFloat(document.getElementById('copy-amount')?.value);
             if (!amount || amount < 100) { showToast('Min 100 USDT', 'error'); setButtonLoading(btn, false); return; }
             if (amount > (this.currentUserData.balance?.usdt||0)) { showToast('Insufficient balance', 'error'); setButtonLoading(btn, false); return; }
+            
+            // Deduct amount immediately
             this.currentUserData.balance.usdt -= amount;
             this.currentUserData.copyTradeCount = (this.currentUserData.copyTradeCount||0) + 1;
             if (!this.currentUserData.copyTradeResetDate) {
@@ -859,24 +864,89 @@
             this.closeModal();
             showToast('🤖 AI Trade started! 5 min countdown...', 'info');
             this.route();
+            
+            // Timer to add profit after 5 minutes
             setTimeout(async () => {
+              // ✅ CRITICAL FIX: Reload fresh user data from Firebase
+              const userDoc = await db.collection('users').doc(this.currentUserData.id).get();
+              if (!userDoc.exists) return;
+              
+              const freshData = userDoc.data();
+              this.currentUserData = freshData;
+              this.currentUserData.id = userDoc.id;
+              this.ensureDefaults();
+              
               const profit = parseFloat((amount * 0.013).toFixed(2));
               const exitPrice = price * (1.013);
-              trade.status = 'completed'; trade.profit = profit; trade.roi = 1.3; trade.exitPrice = exitPrice;
-              this.currentUserData.balance.usdt = parseFloat((this.currentUserData.balance.usdt + profit).toFixed(2));
-              this.currentUserData.totalEarned = parseFloat((this.currentUserData.totalEarned + profit).toFixed(2));
-              if (!this.currentUserData.copyTrades) this.currentUserData.copyTrades = [];
-              const idx = this.currentUserData.copyTrades.findIndex(t => t.id === tradeId);
-              if (idx !== -1) this.currentUserData.copyTrades[idx] = trade;
-              this.currentUserData.transactions.unshift({ id: 'tx_'+Math.random().toString(36).substr(2,8), type: 'copy_trade', amount: profit, currency: 'USDT', date: new Date().toISOString(), status: 'completed', details: `AI Copy ${pair}` });
+              
+              // Find and update the trade
+              const tradeIndex = (this.currentUserData.copyTrades || []).findIndex(t => t.id === tradeId);
+              if (tradeIndex !== -1) {
+                this.currentUserData.copyTrades[tradeIndex].status = 'completed';
+                this.currentUserData.copyTrades[tradeIndex].profit = profit;
+                this.currentUserData.copyTrades[tradeIndex].roi = 1.3;
+                this.currentUserData.copyTrades[tradeIndex].exitPrice = exitPrice;
+              }
+              
+              // ✅ ADD PROFIT TO BALANCE
+              this.currentUserData.balance.usdt = parseFloat(((this.currentUserData.balance.usdt || 0) + profit).toFixed(2));
+              this.currentUserData.totalEarned = parseFloat(((this.currentUserData.totalEarned || 0) + profit).toFixed(2));
+              
+              // Add transaction record
+              if (!this.currentUserData.transactions) this.currentUserData.transactions = [];
+              this.currentUserData.transactions.unshift({ 
+                id: 'tx_'+Math.random().toString(36).substr(2,8), 
+                type: 'copy_trade', 
+                amount: profit, 
+                currency: 'USDT', 
+                date: new Date().toISOString(), 
+                status: 'completed', 
+                details: `AI Copy ${pair}` 
+              });
+              
               await db.collection('copyTrades').doc(tradeId).update({ status: 'completed', profit, roi: 1.3, exitPrice });
               await this.saveUserData();
               showToast(`🤖 Trade Completed! +${profit} USDT`, 'reward');
               spawnConfetti(40);
               if (this.currentPage === 'copy-trading' || this.currentPage === 'home') this.route();
-            }, 300000);
+            }, 300000); // 5 minutes
           });
         }, 100);
+      },
+      
+      async checkPendingCopyTrades() {
+        if (!this.currentUserData) return;
+        const pendingTrades = (this.currentUserData.copyTrades || []).filter(t => t.status === 'active');
+        for (const trade of pendingTrades) {
+          const endTime = new Date(trade.endTime);
+          if (Date.now() >= endTime.getTime()) {
+            // Trade expired - add profit if not already added
+            if (trade.profit === 0) {
+              const profit = parseFloat((trade.amount * 0.013).toFixed(2));
+              trade.profit = profit;
+              trade.roi = 1.3;
+              trade.exitPrice = trade.entryPrice * 1.013;
+              trade.status = 'completed';
+              
+              this.currentUserData.balance.usdt = parseFloat(((this.currentUserData.balance.usdt || 0) + profit).toFixed(2));
+              this.currentUserData.totalEarned = parseFloat(((this.currentUserData.totalEarned || 0) + profit).toFixed(2));
+              
+              this.currentUserData.transactions.unshift({ 
+                id: 'tx_'+Math.random().toString(36).substr(2,8), 
+                type: 'copy_trade', 
+                amount: profit, 
+                currency: 'USDT', 
+                date: new Date().toISOString(), 
+                status: 'completed', 
+                details: `AI Copy ${trade.pair}` 
+              });
+              
+              await db.collection('copyTrades').doc(trade.id).update({ status: 'completed', profit, roi: 1.3, exitPrice: trade.exitPrice });
+              await this.saveUserData();
+              showToast(`🤖 Pending Trade Completed! +${profit} USDT`, 'reward');
+            }
+          }
+        }
       },
 
       attachLoginEvents() {
@@ -910,79 +980,79 @@
       attachSettingsEvents() { document.getElementById('delete-account-btn')?.addEventListener('click', async () => { if (confirm('DELETE permanently?')) { try { const user = auth.currentUser; if (user) { await db.collection('users').doc(user.uid).delete(); await user.delete(); } this.currentUserData = null; showToast('Account deleted','error'); window.location.hash = 'login'; } catch (error) { showToast('Error deleting','error'); } } }); },
       attachPlansEvents() {},
       attachCopyTradingEvents() {
-    document.querySelectorAll('.copy-trade-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.disabled) return;
-        const pair = btn.dataset.pair;
-        const price = parseFloat(btn.dataset.price);
-        this.startCopyTrade(pair, price);
-      });
-    });
-    
-    setInterval(() => {
-      const timerEl = document.getElementById('reset-timer');
-      if (!timerEl) return;
-      const u = this.currentUserData;
-      if (!u?.copyTradeResetDate) { timerEl.textContent = '--:--:--'; return; }
-      const diff = new Date(u.copyTradeResetDate) - new Date();
-      if (diff <= 0) { timerEl.textContent = 'Reset!'; u.copyTradeCount = 0; u.copyTradeResetDate = null; this.saveUserData(); return; }
-      const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
-      timerEl.textContent = `${h}h ${m}m ${s}s`;
-    }, 1000);
-
-    // ✅ REAL BINANCE LIVE PRICES - UPDATES EVERY 3 SECONDS
-    const binancePairs = {
-      'BTC/USDT': 'BTCUSDT',
-      'ETH/USDT': 'ETHUSDT',
-      'BNB/USDT': 'BNBUSDT',
-      'SOL/USDT': 'SOLUSDT',
-      'TRX/USDT': 'TRXUSDT'
-    };
-    
-    const fetchLivePrices = async () => {
-      if (this.currentPage !== 'copy-trading') return;
-      try {
-        const symbols = JSON.stringify(Object.values(binancePairs));
-        const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${symbols}`);
-        const data = await response.json();
-        
-        document.querySelectorAll('.glass-panel.rounded-2xl.p-5').forEach(card => {
-          const pairName = card.querySelector('.font-bold')?.textContent?.trim();
-          if (!pairName) return;
-          
-          const symbol = binancePairs[pairName];
-          if (!symbol) return;
-          
-          const ticker = data.find(d => d.symbol === symbol);
-          if (!ticker) return;
-          
-          const priceEl = card.querySelector('.text-xl.font-bold');
-          const changeEl = card.querySelector('.text-sm');
-          
-          if (priceEl) {
-            const price = parseFloat(ticker.lastPrice);
-            priceEl.textContent = '$' + (price >= 1 ? price.toFixed(2) : price.toFixed(4));
-          }
-          
-          if (changeEl) {
-            const change = parseFloat(ticker.priceChangePercent);
-            changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
-            changeEl.className = 'text-sm ' + (change >= 0 ? 'text-green-400' : 'text-red-400');
-          }
-          
-          const copyBtn = card.querySelector('.copy-trade-btn');
-          if (copyBtn && ticker.lastPrice) {
-            copyBtn.dataset.price = parseFloat(ticker.lastPrice);
-          }
+        document.querySelectorAll('.copy-trade-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            const pair = btn.dataset.pair;
+            const price = parseFloat(btn.dataset.price);
+            this.startCopyTrade(pair, price);
+          });
         });
-      } catch (err) {
-        console.log('Binance fetch error:', err.message);
-      }
-    };
-    
-    fetchLivePrices();
-    setInterval(fetchLivePrices, 3000);
-  },
+        
+        setInterval(() => {
+          const timerEl = document.getElementById('reset-timer');
+          if (!timerEl) return;
+          const u = this.currentUserData;
+          if (!u?.copyTradeResetDate) { timerEl.textContent = '--:--:--'; return; }
+          const diff = new Date(u.copyTradeResetDate) - new Date();
+          if (diff <= 0) { timerEl.textContent = 'Reset!'; u.copyTradeCount = 0; u.copyTradeResetDate = null; this.saveUserData(); return; }
+          const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+          timerEl.textContent = `${h}h ${m}m ${s}s`;
+        }, 1000);
+
+        // Binance live prices
+        const binancePairs = {
+          'BTC/USDT': 'BTCUSDT',
+          'ETH/USDT': 'ETHUSDT',
+          'BNB/USDT': 'BNBUSDT',
+          'SOL/USDT': 'SOLUSDT',
+          'TRX/USDT': 'TRXUSDT'
+        };
+        
+        const fetchLivePrices = async () => {
+          if (this.currentPage !== 'copy-trading') return;
+          try {
+            const symbols = JSON.stringify(Object.values(binancePairs));
+            const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${symbols}`);
+            const data = await response.json();
+            
+            document.querySelectorAll('.glass-panel.rounded-2xl.p-5').forEach(card => {
+              const pairName = card.querySelector('.font-bold')?.textContent?.trim();
+              if (!pairName) return;
+              
+              const symbol = binancePairs[pairName];
+              if (!symbol) return;
+              
+              const ticker = data.find(d => d.symbol === symbol);
+              if (!ticker) return;
+              
+              const priceEl = card.querySelector('.live-price');
+              const changeEl = card.querySelector('.live-change');
+              
+              if (priceEl) {
+                const price = parseFloat(ticker.lastPrice);
+                priceEl.textContent = '$' + (price >= 1 ? price.toFixed(2) : price.toFixed(4));
+              }
+              
+              if (changeEl) {
+                const change = parseFloat(ticker.priceChangePercent);
+                changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+                changeEl.className = 'text-sm live-change ' + (change >= 0 ? 'text-green-400' : 'text-red-400');
+              }
+              
+              const copyBtn = card.querySelector('.copy-trade-btn');
+              if (copyBtn && ticker.lastPrice) {
+                copyBtn.dataset.price = parseFloat(ticker.lastPrice);
+              }
+            });
+          } catch (err) {
+            console.log('Binance fetch error:', err.message);
+          }
+        };
+        
+        fetchLivePrices();
+        setInterval(fetchLivePrices, 3000);
+      },
       
       setWalletAddress() {
         if (!this.currentUserData) return;
@@ -1002,6 +1072,211 @@
     window.addEventListener('load', () => { setTimeout(async () => { await APP.init(); if (window.lucide) { try { lucide.createIcons(); } catch(e) {} } }, 100); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') APP.closeModal(); });
     console.log('🤖 GOLDENPOWER AI v10 · Copy Trading · Real 2FA · Full Ecosystem');
+        // PREMIUM FEATURES - WORKING CODE
+(function(){
+    console.log("Loading premium features...");
+    
+    // Premium Trade Modal
+    var modalDiv = document.createElement("div");
+    modalDiv.id = "premiumModal";
+    modalDiv.style.display = "none";
+    modalDiv.style.position = "fixed";
+    modalDiv.style.inset = "0";
+    modalDiv.style.zIndex = "10000";
+    modalDiv.style.background = "rgba(0,0,0,0.95)";
+    modalDiv.style.alignItems = "center";
+    modalDiv.style.justifyContent = "center";
+    modalDiv.innerHTML = '<div style="background:#111;border:2px solid #D4AF37;border-radius:30px;padding:25px;width:90%;max-width:350px;margin:auto;margin-top:20%"><h2 style="color:#D4AF37;text-align:center">🤖 AI TRADE ACTIVE</h2><div style="color:white;text-align:center;margin:15px 0"><span id="pmPair">BTC/USDT</span><br><span id="pmAmount">100 USDT</span></div><div style="background:#222;border-radius:15px;padding:10px;margin:10px 0"><canvas id="pmCanvas" width="300" height="80" style="width:100%"></canvas></div><div style="display:flex;justify-content:space-between"><div><div style="color:#888">Time Left</div><div id="pmTimer" style="color:#D4AF37;font-size:20px">04:59</div></div><div><div style="color:#888">Profit</div><div id="pmProfit" style="color:#00ff88;font-size:20px">+1.30</div></div></div><div style="margin-top:15px"><div style="color:#888">AI Confidence</div><div style="background:#333;height:6px;border-radius:3px"><div id="pmConfBar" style="width:90%;height:100%;background:#D4AF37;border-radius:3px"></div></div></div></div>';
+    document.body.appendChild(modalDiv);
+    
+    var canvas = document.getElementById("pmCanvas");
+    var ctx = canvas ? canvas.getContext("2d") : null;
+    var animId = null;
+    var timerInt = null;
+    var endTime = 0;
+    var price = 50000;
+    var history = [];
+    
+    window.showPremiumTrade = function(pair, amount, profit, durationSec){
+        document.getElementById("pmPair").innerText = pair;
+        document.getElementById("pmAmount").innerText = amount + " USDT";
+        document.getElementById("pmProfit").innerHTML = "+" + profit.toFixed(2);
+        endTime = Date.now() + (durationSec * 1000);
+        price = 50000;
+        history = [];
+        for(var i=0;i<50;i++) history.push(50000);
+        document.getElementById("premiumModal").style.display = "flex";
+        
+        if(timerInt) clearInterval(timerInt);
+        timerInt = setInterval(function(){
+            var rem = Math.max(0, endTime - Date.now());
+            var mins = Math.floor(rem/60000);
+            var secs = Math.floor((rem%60000)/1000);
+            document.getElementById("pmTimer").innerText = (mins<10?"0"+mins:mins)+":"+(secs<10?"0"+secs:secs);
+            var conf = 85 + Math.floor(Math.random()*14);
+            document.getElementById("pmConfBar").style.width = conf + "%";
+            if(rem <= 0) clearInterval(timerInt);
+        },1000);
+        
+        if(animId) cancelAnimationFrame(animId);
+        function draw(){
+            if(!canvas || !ctx || document.getElementById("premiumModal").style.display !== "flex"){
+                if(animId) cancelAnimationFrame(animId);
+                return;
+            }
+            var w = canvas.clientWidth, h = 70;
+            canvas.width = w;
+            canvas.height = h;
+            var change = (Math.random()-0.5)*(price*0.003);
+            price += change;
+            history.push(price);
+            if(history.length > 50) history.shift();
+            var minP = Math.min.apply(Math,history);
+            var maxP = Math.max.apply(Math,history);
+            var range = maxP - minP || 1;
+            ctx.clearRect(0,0,w,h);
+            ctx.beginPath();
+            ctx.strokeStyle = "#D4AF37";
+            ctx.lineWidth = 2;
+            for(var i=0;i<history.length;i++){
+                var x = (i/(history.length-1))*w;
+                var y = h - ((history[i]-minP)/range)*h;
+                if(i===0) ctx.moveTo(x,y);
+                else ctx.lineTo(x,y);
+            }
+            ctx.stroke();
+            animId = requestAnimationFrame(draw);
+        }
+        draw();
+        
+        // play sound
+        try{
+            var actx = new (window.AudioContext||window.webkitAudioContext)();
+            var osc = actx.createOscillator();
+            var gn = actx.createGain();
+            osc.connect(gn);
+            gn.connect(actx.destination);
+            osc.frequency.value = 660;
+            gn.gain.value = 0.2;
+            osc.start();
+            gn.gain.exponentialRampToValueAtTime(0.00001, actx.currentTime+0.3);
+            osc.stop(actx.currentTime+0.3);
+            actx.resume();
+        }catch(e){}
+    };
+    
+    // Active Trade Card
+    window.showActiveCard = function(pair, amount, profit, endTime){
+        var oldCard = document.getElementById("activeTradeCard");
+        if(oldCard) oldCard.remove();
+        var card = document.createElement("div");
+        card.id = "activeTradeCard";
+        card.style.cssText = "position:fixed;bottom:80px;right:10px;z-index:9999;background:#111;border:1px solid #D4AF37;border-radius:15px;padding:10px;width:180px";
+        card.innerHTML = '<div style="display:flex;justify-content:space-between"><b>'+pair+'</b><span style="color:#D4AF37">● ACTIVE</span></div><div>Amount: '+amount+' USDT</div><div>Profit: +'+profit.toFixed(2)+' USDT</div><div>Time: <span id="cardTimer">--:--</span></div><div style="background:#333;height:3px;margin-top:5px"><div id="cardProg" style="width:0%;height:100%;background:#D4AF37"></div></div>';
+        document.body.appendChild(card);
+        var cardInt = setInterval(function(){
+            var rem = Math.max(0, endTime - Date.now());
+            var mins = Math.floor(rem/60000);
+            var secs = Math.floor((rem%60000)/1000);
+            document.getElementById("cardTimer").innerText = mins+":"+(secs<10?"0"+secs:secs);
+            var prog = 100 - (rem/300000)*100;
+            document.getElementById("cardProg").style.width = Math.min(100,Math.max(0,prog)) + "%";
+            if(rem <= 0){ clearInterval(cardInt); card.remove(); }
+        },1000);
+    };
+    
+    // Daily Limit Screen
+    window.showLimitLock = function(){
+        APP.openModal('<div class="text-center"><div class="w-16 h-16 bg-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4"><span class="text-3xl">🔒</span></div><h2 class="text-xl font-bold">Daily Limit Reached</h2><p class="text-gray-400">2/2 trades completed for today</p><div class="bg-black/30 p-3 rounded-xl my-3"><p class="text-sm text-gray-400">Reset in</p><p class="text-2xl font-bold text-gold-400" id="limitTimer">23:59:59</p></div><button onclick="APP.closeModal()" class="bg-gradient-gold text-black px-6 py-2 rounded-xl">Close</button></div>');
+        var resetTime = APP.currentUserData?.copyTradeResetDate ? new Date(APP.currentUserData.copyTradeResetDate).getTime() : Date.now() + 86400000;
+        var limitInt = setInterval(function(){
+            var rem = Math.max(0, resetTime - Date.now());
+            if(rem <= 0){
+                clearInterval(limitInt);
+                APP.closeModal();
+                if(APP.currentUserData){
+                    APP.currentUserData.copyTradeCount = 0;
+                    APP.currentUserData.copyTradeResetDate = null;
+                    APP.saveUserData();
+                    showToast("Daily trades reset!", "success");
+                }
+                return;
+            }
+            var h = Math.floor(rem/3600000);
+            var m = Math.floor((rem%3600000)/60000);
+            var s = Math.floor((rem%60000)/1000);
+            var timerEl = document.getElementById("limitTimer");
+            if(timerEl) timerEl.innerText = (h<10?"0"+h:h)+":"+(m<10?"0"+m:m)+":"+(s<10?"0"+s:s);
+        },1000);
+    };
+    
+    // Hook into copy trade button
+    setTimeout(function(){
+        var checkBtn = setInterval(function(){
+            var btn = document.getElementById("confirm-copy-btn");
+            if(btn && !btn._hooked){
+                btn._hooked = true;
+                btn.addEventListener("click", function(){
+                    setTimeout(function(){
+                        var amt = parseFloat(document.getElementById("copy-amount")?.value || 100);
+                        var pair = "BTC/USDT";
+                        var tradeBtn = document.querySelector(".copy-trade-btn:not([disabled])");
+                        if(tradeBtn) pair = tradeBtn.dataset.pair;
+                        var profit = amt * 0.013;
+                        var end = Date.now() + 300000;
+                        showPremiumTrade(pair, amt, profit, 300);
+                        showActiveCard(pair, amt, profit, end);
+                    }, 200);
+                });
+                clearInterval(checkBtn);
+            }
+        }, 500);
+    }, 1000);
+    
+    // Restore active trades on page load
+    setTimeout(function(){
+        if(APP.currentUserData && APP.currentUserData.copyTrades){
+            for(var i=0;i<APP.currentUserData.copyTrades.length;i++){
+                var t = APP.currentUserData.copyTrades[i];
+                if(t.status === "active"){
+                    var end = new Date(t.endTime).getTime();
+                    if(Date.now() >= end){
+                        var profit = t.amount * 0.013;
+                        t.status = "completed";
+                        t.profit = profit;
+                        APP.currentUserData.balance.usdt += profit;
+                        APP.currentUserData.totalEarned += profit;
+                        APP.saveUserData();
+                        showToast("Trade completed! +"+profit.toFixed(2)+" USDT", "reward");
+                    } else {
+                        showPremiumTrade(t.pair, t.amount, t.amount*0.013, Math.floor((end-Date.now())/1000));
+                        showActiveCard(t.pair, t.amount, t.amount*0.013, end);
+                    }
+                }
+            }
+        }
+    }, 1500);
+    
+    // Override copy trading attach
+    var origAttach = APP.attachCopyTradingEvents;
+    if(origAttach){
+        APP.attachCopyTradingEvents = function(){
+            origAttach.call(this);
+            var remaining = 2 - (this.currentUserData?.copyTradeCount || 0);
+            if(remaining <= 0){
+                var btns = document.querySelectorAll(".copy-trade-btn");
+                for(var i=0;i<btns.length;i++){
+                    btns[i].disabled = true;
+                    btns[i].innerText = "🔒 Daily Limit Reached";
+                    btns[i].onclick = function(){ window.showLimitLock(); };
+                }
+            }
+        };
+    }
+    
+    console.log("Premium features ready!");
+})();
   </script>
+    
 </body>
 </html>
